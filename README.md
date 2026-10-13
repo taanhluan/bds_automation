@@ -52,11 +52,19 @@ Trong chế độ OpenAI, mỗi lượt viết tin thật mới có thể phát 
 - API chỉ lắng nghe trên loopback; chặn Host/Origin bên ngoài.
 - `.gitignore` loại trừ key, database, hình sinh ra và dependencies.
 
-## Phạm vi của bản local
+## Deploy bản test trên Render
+
+Repo có `render.yaml` để tạo web service miễn phí cho bản test. Service chạy cả Express và giao diện, dùng Basic Auth để người có link phải nhập thông tin truy cập. Render tự tạo `ACCESS_PASSWORD`; `OPENAI_API_KEY` được nhập riêng trong bước tạo Blueprint/Dashboard, không lưu trong Git. Không dùng key đã lộ trước đây; hãy tạo key mới rồi nhập vào Render. `LOW_COST_MODE=true` giữ tính năng tạo ảnh tự động ở chế độ miễn phí.
+
+Tạo service: mở Render Dashboard → **New → Blueprint**, chọn repo `taanhluan/bds_automation`, kiểm tra cấu hình `render.yaml`, nhập `OPENAI_API_KEY` mới khi được hỏi rồi tạo service. Sau khi deploy xong, lấy URL `onrender.com` và giá trị `ACCESS_PASSWORD` trong Environment của service để gửi cho người thử; username là `tester`. Không đưa mật khẩu test vào repo. Gửi mật khẩu qua kênh riêng.
+
+Đây là cấu hình thử nghiệm: gói free có thể ngủ khi không hoạt động và filesystem tạm thời, nên bài nháp/ảnh có thể mất sau khi service khởi động lại hoặc deploy lại. Không dùng để lưu nội dung cần giữ. Mọi khách có username/mật khẩu đều có thể sử dụng hạn mức API chung của key; chỉ chia sẻ với người tin cậy và thu hồi/đổi key nếu cần.
+
+## Phạm vi
 
 Ứng dụng dùng **tiêu đề/tóm tắt RSS cùng context dự án do người dùng nhập**, không lấy toàn văn bài báo. Context là dữ liệu người dùng cung cấp, không tự được xem là thông tin đã được báo xác nhận. Tóm tắt RSS được giữ làm phần tin; một Responses API request có cấu trúc viết tiêu đề, điều kiện và lợi ích có thể có. Backend ghép phần nhận định, dữ kiện và nguồn trên máy để tiết kiệm token. Kiểm tra tự động là hỗ trợ; luôn đọc nguồn và duyệt nội dung trước khi đăng. Nguồn thiếu thông tin thì cần chọn tin khác, không dùng AI để bổ sung dữ kiện còn thiếu.
 
-Lịch chạy chỉ hoạt động khi `npm run dev` hoặc `npm start` đang chạy. Pending jobs vẫn nằm trong database khi restart. Job AI đang chạy lúc ứng dụng bị dừng được đánh dấu chưa xác định kết quả, không tự gửi lại để tránh tính phí lặp. Đây là bản dành cho localhost; khi chuẩn bị đưa lên Internet cần bổ sung xác thực và cấu hình hosting phù hợp.
+Lịch chạy chỉ hoạt động khi `npm run dev` hoặc `npm start` đang chạy. Pending jobs vẫn nằm trong database khi restart. Job AI đang chạy lúc ứng dụng bị dừng được đánh dấu chưa xác định kết quả, không tự gửi lại để tránh tính phí lặp. Bản Render yêu cầu Basic Auth cho toàn bộ ứng dụng; chỉ endpoint health check được mở để nền tảng kiểm tra trạng thái.
 
 VnExpress có [điều kiện sử dụng RSS](https://vnexpress.net/rss) và [điều khoản nội dung/hình](https://vnexpress.net/dieu-khoan-su-dung). Không coi link nguồn hoặc việc diễn đạt lại là quyền tái sử dụng toàn bộ bài/ảnh. Ứng dụng không tải ảnh báo để đăng lại.
 

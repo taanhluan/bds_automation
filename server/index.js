@@ -12,7 +12,8 @@ if (config.lowCostMode !== false && !store.meta('lowCostDefaultsV1')) {
 }
 const worker = createWorker(store);
 const app = createApp(store, worker);
-const server = app.listen(port, '127.0.0.1', () => {
+const host = config.production ? '0.0.0.0' : '127.0.0.1';
+const server = app.listen(port, host, () => {
   console.log(`Địa Ốc API: http://localhost:${port} · ${config.aiConfigured ? 'API key đã cấu hình' : 'Sẵn sàng thử bằng dữ liệu mẫu'}`);
   worker.start();
 });

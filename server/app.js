@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 import sharp from 'sharp';
 import { renderCover } from './images.js';
 import { facebookPost } from '../shared/facebook.js';
@@ -14,14 +14,40 @@ export function createApp(store, worker) {
   app.use((req, res, next) => {
     let host;
     try { host = new URL(`http://${req.headers.host}`).hostname; } catch { return res.status(403).json({ error: 'Địa chỉ truy cập không hợp lệ.' }); }
-    if (!['localhost', '127.0.0.1', '[::1]'].includes(host)) return res.status(403).json({ error: 'Ứng dụng này phục vụ trên localhost.' });
+    const localHost = ['localhost', '127.0.0.1', '[::1]'].includes(host);
+    const publicHost = config.production && (host.endsWith('.onrender.com') || host === process.env.PUBLIC_HOST);
+    if (!localHost && !publicHost) return res.status(403).json({ error: 'Địa chỉ truy cập không hợp lệ.' });
+    if (config.production && req.path !== '/api/health') {
+      const username = process.env.ACCESS_USERNAME || '';
+      const password = process.env.ACCESS_PASSWORD || '';
+      if (!username || !password) return res.status(503).send('Dịch vụ chưa được cấu hình mật khẩu truy cập.');
+      const authorization = /^Basic\s+(.+)$/i.exec(req.headers.authorization || '');
+      let suppliedUser = '';
+      let suppliedPassword = '';
+      try {
+        const decoded = Buffer.from(authorization?.[1] || '', 'base64').toString('utf8');
+        const separator = decoded.indexOf(':');
+        if (separator >= 0) { suppliedUser = decoded.slice(0, separator); suppliedPassword = decoded.slice(separator + 1); }
+      } catch {}
+      const matches = (actual, expected) => {
+        const left = Buffer.from(actual);
+        const right = Buffer.from(expected);
+        return left.length === right.length && timingSafeEqual(left, right);
+      };
+      if (!matches(suppliedUser, username) || !matches(suppliedPassword, password)) {
+        res.setHeader('WWW-Authenticate', 'Basic realm="BDS Automation test", charset="UTF-8"');
+        return res.status(401).send('Cần tài khoản và mật khẩu để thử ứng dụng.');
+      }
+    }
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
       const origin = req.headers.origin;
       if (req.headers['sec-fetch-site'] === 'cross-site') return res.status(403).json({ error: 'Yêu cầu từ trang ngoài bị từ chối.' });
       if (origin) {
         try {
           const parsed = new URL(origin);
-          if (!['http:', 'https:'].includes(parsed.protocol) || !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) throw new Error();
+          const originIsLocal = ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname);
+          const originIsSameHost = config.production && parsed.host === req.headers.host && parsed.protocol === 'https:';
+          if (!['http:', 'https:'].includes(parsed.protocol) || (!originIsLocal && !originIsSameHost)) throw new Error();
         } catch { return res.status(403).json({ error: 'Nguồn yêu cầu không hợp lệ.' }); }
       }
     }

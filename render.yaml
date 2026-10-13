@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: bds-automation-test
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /tmp/bds-data
+      - key: LOW_COST_MODE
+        value: "true"
+      - key: ACCESS_USERNAME
+        value: tester
+      - key: ACCESS_PASSWORD
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
