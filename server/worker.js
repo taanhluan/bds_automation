@@ -5,6 +5,7 @@ import { fetchFeed } from './rss.js';
 import { buildDraft } from './ai.js';
 import { perspectiveVersion, selectProjectContext } from './perspective.js';
 import { generateBackground, renderCover } from './images.js';
+import { selectDailyArticles, dailyPrepared } from './editorial.js';
 
 export function createWorker(store, dependencies = {}) {
   const deps = { fetchFeed, buildDraft, generateBackground, renderCover, aiConfigured: config.aiConfigured, lowCostMode: config.lowCostMode, ...dependencies };
@@ -19,7 +20,10 @@ export function createWorker(store, dependencies = {}) {
     if (!article) throw new Error('Không tìm thấy tin nguồn.');
     if (!article.isDemo && store.settings().writingMode !== 'free' && !deps.aiConfigured) throw new Error('Cần OPENAI_API_KEY trong .env.local để viết bài từ tin thật. Anh có thể thử dữ liệu mẫu trước.');
     if (!article.summary || article.summary.length < 40) throw new Error('Tin này chưa đủ nội dung RSS để tạo bài chính xác.');
-    return store.addJob('build_draft', { articleId, draftId: null, articleSnapshot: article, settingsSnapshot: store.settings(), force });
+    const settings = store.settings();
+    const bucket = createHash('sha256').update(article.id).digest()[0];
+    const requestedMode = settings.contentMix === 'mixed' ? (bucket % 2 ? 'project' : 'analysis') : settings.contentMix;
+    return store.addJob('build_draft', { articleId, draftId: null, articleSnapshot: article, settingsSnapshot: { ...settings, contentMode: requestedMode || 'analysis' }, force });
   }
 
   function enqueueImage(draftId, { templateOnly = false, useAI = false } = {}) {
@@ -37,14 +41,16 @@ export function createWorker(store, dependencies = {}) {
     const settings = store.settings();
     if (!settings.autoGenerate || (settings.writingMode !== 'free' && !deps.aiConfigured)) return;
     const active = store.jobs().filter((j) => j.type === 'build_draft' && ['pending', 'processing'].includes(j.status)).length;
-    let remaining = settings.dailyDraftLimit - store.draftUsage() - active;
+    let remaining = Math.min(settings.dailyDraftLimit - store.draftUsage() - active, (settings.dailyTarget || 5) - dailyPrepared(store) - active);
     const draftedIds = new Set(store.drafts().map((d) => d.articleId));
-    for (const article of store.articles()) {
+    const pending = store.pendingJobs().filter(job => job.type === 'build_draft');
+    const existing = store.articles().filter(article => draftedIds.has(article.id) || pending.some(job => job.articleId === article.id));
+    for (const { article } of selectDailyArticles(store.articles(), existing, settings)) {
       if (remaining <= 0) break;
       if (article.isDemo || article.status !== 'new' || draftedIds.has(article.id)) continue;
       const published = new Date(article.publishedAt).getTime();
       if (!article.publishedAt || !Number.isFinite(published) || Date.now() - published > 48 * 3600000 || published > Date.now() + 3600000) continue;
-      try { enqueueDraft(article.id); remaining--; }
+      try { const job = enqueueDraft(article.id); job.automatic = true; store.saveJob(job); remaining--; }
       catch { store.saveArticle({ ...article, status: 'needs_context' }); }
     }
   }
@@ -75,7 +81,7 @@ export function createWorker(store, dependencies = {}) {
     if (!article) throw new Error('Tin nguồn đã bị xóa.');
     const settings = job.settingsSnapshot || store.settings();
     const free = settings.writingMode === 'free';
-    const cacheKey = createHash('sha256').update(JSON.stringify({ version: perspectiveVersion, writingMode: settings.writingMode, focusArea: settings.focusArea, projectContext: selectProjectContext(article, settings), model: config.textModel, title: article.title, summary: article.summary, tone: settings.tone, audience: settings.audience })).digest('hex');
+    const cacheKey = createHash('sha256').update(JSON.stringify({ version: perspectiveVersion, writingMode: settings.writingMode, contentMode: settings.contentMode, styleSamples: settings.styleSamples, styleGuide: settings.styleGuide, brandName: settings.brandName, websiteUrl: settings.websiteUrl, focusArea: settings.focusArea, projectContext: selectProjectContext(article, settings), model: config.textModel, title: article.title, summary: article.summary, tone: settings.tone, audience: settings.audience })).digest('hex');
     const cached = !article.isDemo && !job.force ? store.cachedGeneration(cacheKey) : null;
     if (!article.isDemo && !cached) store.reserve(job, free ? 'local-text' : 'text', store.settings().dailyDraftLimit);
     const result = cached || await deps.buildDraft(article, settings);
@@ -83,11 +89,14 @@ export function createWorker(store, dependencies = {}) {
     if (!article.isDemo && !cached) store.cacheGeneration(cacheKey, result);
     const now = new Date().toISOString();
     let content = result.content.trim();
+    if (!article.isDemo && settings.websiteUrl) content += `\n\nĐọc thêm tại website của mình:\n${settings.websiteUrl}`;
     if (!article.isDemo && !content.includes(article.url)) content += `\n\nNguồn: ${article.source}\n${article.url}`;
     const draft = {
       id: randomUUID(), articleId: article.id,
       title: result.title || article.title, content, aiContent: content,
       summary: result.summary || null, perspective: result.perspective || null, watchpoint: result.watchpoint || null, question: result.question || null, hashtags: result.hashtags || [],
+      mechanism: result.mechanism || '', audienceNote: result.audienceNote || '', contentMode: result.contentMode || 'analysis',
+      brandName: settings.brandName, imageStyle: settings.imageStyle, automatic: Boolean(job.automatic),
       contextUsed: Boolean(result.contextUsed), contextSources: result.contextSources || [], skillVersion: result.skillVersion || perspectiveVersion, generationProvider: result.provider || (free ? 'local' : 'openai'),
       facts: result.facts || [], reviewFlags: result.reviewFlags || [],
       imageBrief: result.imageBrief || `Minh họa trung tính về ${article.topic}`,
@@ -96,6 +105,7 @@ export function createWorker(store, dependencies = {}) {
       cacheHit: Boolean(cached), generationModel: article.isDemo || free ? null : config.textModel,
       revision: store.nextRevision(article.id), contentRevision: 1,
       sourceTitle: article.title, sourceSummary: article.summary,
+      sourceContext: result.contextUsed ? selectProjectContext(article, settings).text : '',
       createdAt: now, updatedAt: now, copiedAt: null,
     };
     store.saveDraft(draft);
@@ -120,12 +130,12 @@ export function createWorker(store, dependencies = {}) {
       store.recordUsage(job, { status: 'completed', ...(result.usage || {}) });
     }
     const article = store.article(draft.articleId);
-    const png = await deps.renderCover({ title: draft.title, topic: article?.topic || 'Bất động sản', isDemo: draft.isDemo, background, source: article?.source, sourceUrl: article?.url, sourceSummary: draft.sourceSummary || article?.summary, publishedAt: article?.publishedAt });
+    const png = await deps.renderCover({ title: draft.title, topic: article?.topic || 'Bất động sản', isDemo: draft.isDemo, background, source: article?.source, sourceUrl: article?.url, sourceSummary: draft.sourceSummary || article?.summary, publishedAt: article?.publishedAt, style: draft.imageStyle || store.settings().imageStyle, brandName: draft.brandName || store.settings().brandName });
     const filename = `${job.id}.png`;
     await fs.writeFile(`${store.assetsDir}/${filename}`, png, { flag: 'wx' });
     const latest = store.draft(draft.id);
     const changed = (latest.contentRevision || 1) !== (draft.contentRevision || 1);
-    store.saveDraft({ ...latest, imageUrl: `/api/assets/${filename}`, imageStatus: changed ? 'stale' : 'ready', imageError: changed ? 'Bài đã được sửa trong lúc tạo ảnh. Kiểm tra hình trước khi sử dụng.' : null, imageContentRevision: draft.contentRevision || 1, imageKind: background ? 'ai' : 'template' });
+    store.saveDraft({ ...latest, approval: null, imageUrl: `/api/assets/${filename}`, imageStatus: changed ? 'stale' : 'ready', imageError: changed ? 'Bài đã được sửa trong lúc tạo ảnh. Kiểm tra hình trước khi sử dụng.' : null, imageContentRevision: draft.contentRevision || 1, imageKind: background ? 'ai' : 'template' });
   }
 
   async function runOnce() {

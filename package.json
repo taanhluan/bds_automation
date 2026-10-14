@@ -12,7 +12,7 @@
     "build": "vite build",
     "start": "node server/index.js --production",
     "test": "node --test tests/*.test.js",
-    "check": "node --check server/index.js && node --check server/store.js && node --check server/worker.js && node --check server/ai.js && node --check server/images.js && node --check server/rss.js && node --check server/perspective.js",
+    "check": "node --check server/index.js && node --check server/store.js && node --check server/worker.js && node --check server/ai.js && node --check server/images.js && node --check server/rss.js && node --check server/perspective.js && node --check server/app.js && node --check server/editorial.js",
     "test:live": "node scripts/test-live.js",
     "test:image": "node scripts/test-image.js"
   },

@@ -130,7 +130,7 @@ export function validateSettings(input, previous = defaults) {
       next[key] = input[key];
     }
   }
-  for (const [key, min, max] of [['fetchIntervalMinutes', 5, 1440], ['dailyDraftLimit', 1, 100], ['dailyImageLimit', 1, 100]]) {
+  for (const [key, min, max] of [['fetchIntervalMinutes', 5, 1440], ['dailyDraftLimit', 1, 100], ['dailyImageLimit', 1, 100], ['dailyTarget', 3, 5]]) {
     if (key in input) {
       if (!Number.isInteger(input[key]) || input[key] < min || input[key] > max) throw new Error(`${key} phải là số nguyên từ ${min} đến ${max}.`);
       next[key] = input[key];
@@ -146,11 +146,23 @@ export function validateSettings(input, previous = defaults) {
     if (!['ai', 'free'].includes(input.writingMode)) throw new Error('Chọn chế độ OpenAI hoặc mẫu miễn phí.');
     next.writingMode = input.writingMode;
   }
-  for (const [key, max] of [['focusArea', 140], ['projectContext', 6000]]) {
+  for (const [key, max] of [['focusArea', 140], ['projectContext', 6000], ['styleSamples', 4000], ['styleGuide', 1200], ['brandName', 70], ['websiteUrl', 1000]]) {
     if (key in input) {
       if (typeof input[key] !== 'string' || input[key].length > max) throw new Error(`${key} tối đa ${max} ký tự.`);
       next[key] = input[key].trim();
     }
+  }
+  for (const [key, values] of [['contentMix', ['mixed', 'analysis', 'project']], ['imageStyle', ['premium', 'editorial']]]) {
+    if (key in input) {
+      if (!values.includes(input[key])) throw new Error(`${key} không hợp lệ.`);
+      next[key] = input[key];
+    }
+  }
+  if (next.websiteUrl) {
+    try {
+      const url = new URL(next.websiteUrl);
+      if (url.protocol !== 'https:' || url.username || url.password) throw new Error();
+    } catch { throw new Error('Website cần là link HTTPS, không chứa thông tin đăng nhập.'); }
   }
   return next;
 }

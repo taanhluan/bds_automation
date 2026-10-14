@@ -34,7 +34,7 @@ export function selectProjectContext(article, settings = {}) {
 }
 
 export function composePerspective(parts) {
-  return [parts.summary, `💭 Góc nhìn của mình\n${parts.perspective}`, `🔎 Điều cần theo dõi\n${parts.watchpoint}`, parts.question, parts.hashtags.join(' ')].join('\n\n');
+  return [parts.summary, parts.mechanism && `📍 Vì sao đáng chú ý\n${parts.mechanism}`, `💭 Góc nhìn của mình\n${parts.perspective}`, parts.audienceNote && `👥 Ai nên quan tâm\n${parts.audienceNote}`, `🔎 Điều cần theo dõi\n${parts.watchpoint}`, parts.question, parts.hashtags.join(' ')].filter(Boolean).join('\n\n');
 }
 
 export function localPerspective(article, settings = {}) {

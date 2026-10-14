@@ -7,6 +7,8 @@ import { renderCover } from './images.js';
 import { facebookPost } from '../shared/facebook.js';
 import { config } from './config.js';
 import { demoArticles } from './demo.js';
+import { approvalDigest, reviewDraft, dailyPrepared } from './editorial.js';
+import { importArticleLink } from './rss.js';
 
 export function createApp(store, worker) {
   const app = express();
@@ -62,10 +64,60 @@ export function createApp(store, worker) {
     const articles = store.articles();
     const drafts = store.drafts().map((draft) => {
       const article = store.article(draft.articleId);
-      if (article?.sourceUpdated && (draft.sourceSummary !== article.summary || draft.sourceTitle !== article.title)) return { ...draft, reviewFlags: [...draft.reviewFlags, 'Nguồn đã được cập nhật sau khi tạo bài; cần đối chiếu lại.'] };
-      return draft;
+      const reviewed = { ...draft, review: reviewDraft(draft, article), approvalDigest: approvalDigest(draft) };
+      if (article?.sourceUpdated && (draft.sourceSummary !== article.summary || draft.sourceTitle !== article.title)) return { ...reviewed, reviewFlags: [...(draft.reviewFlags || []), 'Nguồn đã được cập nhật sau khi tạo bài; cần đối chiếu lại.'] };
+      return reviewed;
     });
-    res.json({ articles, drafts, jobs: store.jobs(), settings: store.settings(), status: { aiConfigured: config.aiConfigured, lowCostMode: config.lowCostMode, textModel: config.textModel, imageModel: config.imageModel, lastFetchedAt: store.meta('lastFetchedAt'), feedError: store.meta('feedError') || null, workerBusy: worker.busy }, stats: { articles: articles.length, drafts: drafts.filter((d) => d.status === 'draft').length, posted: drafts.filter((d) => d.status === 'posted').length, todayGenerated: store.draftUsage(), todayImages: store.usage('image') } });
+    res.json({ articles, drafts, jobs: store.jobs(), settings: store.settings(), status: { aiConfigured: config.aiConfigured, lowCostMode: config.lowCostMode, textModel: config.textModel, imageModel: config.imageModel, lastFetchedAt: store.meta('lastFetchedAt'), feedError: store.meta('feedError') || null, workerBusy: worker.busy, publishingEnabled: false, targetProfile: 'https://www.facebook.com/vuong.nguyen.8694', temporaryStorage: config.production && config.dataDir.startsWith('/tmp/') }, stats: { articles: articles.length, drafts: drafts.filter((d) => d.status === 'draft').length, posted: drafts.filter((d) => d.status === 'posted').length, todayGenerated: store.draftUsage(), todayPrepared: dailyPrepared(store), approved: drafts.filter(d => d.review.status === 'approved').length, todayImages: store.usage('image') } });
+  });
+  app.post('/api/articles/import', async (req, res, next) => {
+    try {
+      const article = await importArticleLink(req.body?.url);
+      store.importArticles([article]);
+      res.status(201).json({ articleId: article.id, message: 'Đã thêm tin nguồn. Studio tự chọn bài theo khu vực và hạn mức; có thể mở tin để tạo ngay.' });
+    } catch (error) { next(error); }
+  });
+  app.post('/api/drafts/:id/approve', (req, res, next) => {
+    try {
+      const draft = store.draft(req.params.id);
+      if (!draft || draft.status !== 'draft') throw new Error('Chỉ duyệt được bài nháp đang chuẩn bị.');
+      if (req.body?.revision !== (draft.contentRevision || 1) || req.body?.digest !== approvalDigest(draft)) return res.status(409).json({ error: 'Bài hoặc hình vừa thay đổi. Tải lại và kiểm tra trước khi duyệt.' });
+      if (req.body?.sourceChecked !== true) throw new Error('Xác nhận đã đọc nguồn và kiểm tra nội dung trước khi duyệt.');
+      const review = reviewDraft(draft, store.article(draft.articleId));
+      if (!review.ready) throw new Error(`Cần xử lý: ${review.checks.filter(check => !check.ok).map(check => check.label).join(', ')}.`);
+      res.json(store.saveDraft({ ...draft, approval: { revision: draft.contentRevision || 1, digest: approvalDigest(draft), approvedAt: new Date().toISOString() }, updatedAt: new Date().toISOString() }));
+    } catch (error) { next(error); }
+  });
+  app.post('/api/drafts/:id/image/confirm', (req, res, next) => {
+    try {
+      const draft = store.draft(req.params.id);
+      if (!draft?.imageUrl || !['stale', 'ready'].includes(draft.imageStatus)) throw new Error('Cần có hình đã tạo trước khi xác nhận.');
+      if (req.body?.revision !== (draft.contentRevision || 1)) return res.status(409).json({ error: 'Bài vừa thay đổi. Kiểm tra lại hình.' });
+      res.json(store.saveDraft({ ...draft, approval: null, imageStatus: 'ready', imageError: null, imageContentRevision: draft.contentRevision || 1 }));
+    } catch (error) { next(error); }
+  });
+  app.post('/api/drafts/:id/archive', (req, res, next) => {
+    try {
+      const draft = store.draft(req.params.id);
+      if (!draft || draft.status === 'posted') throw new Error('Không thể loại bài này khỏi hàng chờ.');
+      res.json(store.saveDraft({ ...draft, status: 'archived', approval: null, updatedAt: new Date().toISOString() }));
+    } catch (error) { next(error); }
+  });
+  app.put('/api/drafts/:id/metrics', (req, res, next) => {
+    try {
+      const draft = store.draft(req.params.id);
+      if (!draft || draft.isDemo || draft.status !== 'posted') throw new Error('Chỉ nhập kết quả cho bài thật đã được xác nhận đăng.');
+      const metrics = {};
+      for (const key of ['views', 'followers', 'clicks', 'inquiries']) {
+        const value = req.body?.[key];
+        if (value === null || value === undefined) metrics[key] = null;
+        else {
+          if (!Number.isSafeInteger(value) || value < 0 || value > 1_000_000_000) throw new Error('Chỉ số cần là số nguyên không âm hoặc để trống.');
+          metrics[key] = value;
+        }
+      }
+      res.json(store.saveDraft({ ...draft, metrics: { ...metrics, source: 'manual', recordedAt: new Date().toISOString() } }));
+    } catch (error) { next(error); }
   });
   app.post('/api/feeds/refresh', async (_req, res, next) => { try { res.json(await worker.refresh()); } catch (error) { next(error); } });
   app.post('/api/demo', (_req, res) => {
@@ -98,11 +150,11 @@ export function createApp(store, worker) {
       const metadata = await sharp(req.body, { limitInputPixels: 30_000_000 }).metadata();
       if (!['jpeg', 'png', 'webp'].includes(metadata.format)) throw new Error('Chỉ hỗ trợ JPG, PNG hoặc WebP.');
       const article = store.article(draft.articleId);
-      const image = await renderCover({ title: draft.title, topic: article?.topic, background: req.body, source: article?.source, sourceUrl: article?.url, sourceSummary: draft.sourceSummary || article?.summary, publishedAt: article?.publishedAt, imageKind: 'upload' });
+      const image = await renderCover({ title: draft.title, topic: article?.topic, background: req.body, source: article?.source, sourceUrl: article?.url, sourceSummary: draft.sourceSummary || article?.summary, publishedAt: article?.publishedAt, imageKind: 'upload', style: store.settings().imageStyle, brandName: store.settings().brandName });
       const filename = `${randomUUID()}.png`;
       await fs.writeFile(path.join(store.assetsDir, filename), image);
       const latest = store.draft(draft.id);
-      res.json(store.saveDraft({ ...latest, imageUrl: `/api/assets/${filename}`, imageKind: 'upload', imageStatus: (latest.contentRevision || 1) === (draft.contentRevision || 1) ? 'ready' : 'stale', imageError: null, imageContentRevision: draft.contentRevision || 1, updatedAt: new Date().toISOString() }));
+      res.json(store.saveDraft({ ...latest, approval: null, imageUrl: `/api/assets/${filename}`, imageKind: 'upload', imageStatus: (latest.contentRevision || 1) === (draft.contentRevision || 1) ? 'ready' : 'stale', imageError: null, imageContentRevision: draft.contentRevision || 1, updatedAt: new Date().toISOString() }));
     } catch (error) { next(error); }
   });
   app.patch('/api/drafts/:id', (req, res, next) => {
@@ -116,7 +168,7 @@ export function createApp(store, worker) {
       let content = req.body.content ?? draft.content;
       const article = store.article(draft.articleId);
       if (!draft.isDemo && !content.includes(article.url)) content += `\n\nNguồn: ${article.source}\n${article.url}`;
-      const nextDraft = { ...draft, content, status: req.body.status ?? draft.status, contentRevision: (draft.contentRevision || 1) + (changed ? 1 : 0), updatedAt: new Date().toISOString(), imageStatus: changed && draft.imageUrl ? 'stale' : draft.imageStatus, imageError: changed && draft.imageUrl ? 'Nội dung đã sửa. Kiểm tra ảnh minh họa trước khi dùng.' : draft.imageError };
+      const nextDraft = { ...draft, content, approval: changed ? null : draft.approval, status: req.body.status ?? draft.status, contentRevision: (draft.contentRevision || 1) + (changed ? 1 : 0), updatedAt: new Date().toISOString(), imageStatus: changed && draft.imageUrl ? 'stale' : draft.imageStatus, imageError: changed && draft.imageUrl ? 'Nội dung đã sửa. Kiểm tra ảnh minh họa trước khi dùng.' : draft.imageError };
       res.json(store.saveDraft(nextDraft));
     } catch (error) { next(error); }
   });

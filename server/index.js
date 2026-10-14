@@ -10,6 +10,10 @@ if (config.lowCostMode !== false && !store.meta('lowCostDefaultsV1')) {
   store.saveSettings({ autoGenerate: false });
   store.setMeta('lowCostDefaultsV1', 'applied');
 }
+if (!store.meta('editorialV2')) {
+  store.saveSettings({ autoGenerate: true, dailyTarget: 5, contentMix: 'mixed', imageStyle: 'premium' });
+  store.setMeta('editorialV2', 'applied');
+}
 const worker = createWorker(store);
 const app = createApp(store, worker);
 const host = config.production ? '0.0.0.0' : '127.0.0.1';

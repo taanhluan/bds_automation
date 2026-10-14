@@ -99,7 +99,38 @@ export function makePhotoCoverSvg({ title, topic, source, sourceUrl, sourceSumma
   </svg>`;
 }
 
-export async function renderCover({ title, topic, isDemo = false, background, source, sourceUrl, sourceSummary, publishedAt, imageKind = 'ai' } = {}) {
+export function makePremiumCoverSvg({ title, topic, brandName, source, sourceUrl, publishedAt, isDemo, hasBackground = false }) {
+  const lines = wrapTitle(title, 904, 64, 4);
+  let domain = '';
+  try { domain = new URL(sourceUrl).hostname; } catch {}
+  const date = publishedAt && Number.isFinite(new Date(publishedAt).getTime()) ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(publishedAt)) : '';
+  const buildings = [180, 290, 405, 635, 755, 870].map((x, i) => {
+    const height = [220, 325, 410, 380, 280, 190][i];
+    const y = 1050 - height;
+    const windows = Array.from({ length: Math.floor(height / 38) - 1 }, (_, row) => [0, 1].map(col => `<rect x="${x + 14 + col * 30}" y="${y + 24 + row * 38}" width="15" height="19" fill="#e9d5a0" opacity="${(row + col) % 3 ? '.65' : '.2'}"/>`).join('')).join('');
+    return `<path d="M${x} ${y}h78v${height}h-78Z" fill="${i % 2 ? '#315b55' : '#204c46'}"/><path d="M${x + 78} ${y}l20 18v${height - 18}h-20Z" fill="#163b38"/>${windows}`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+  <defs><linearGradient id="base" x2="1" y2="1"><stop stop-color="#102c2a"/><stop offset="1" stop-color="#071c1a"/></linearGradient><linearGradient id="veil" x2="0" y2="1"><stop stop-color="#071c1a" stop-opacity=".97"/><stop offset=".48" stop-color="#071c1a" stop-opacity=".88"/><stop offset=".75" stop-color="#071c1a" stop-opacity=".2"/><stop offset="1" stop-color="#071c1a" stop-opacity=".98"/></linearGradient><radialGradient id="sun"><stop stop-color="#e8cf8f" stop-opacity=".5"/><stop offset="1" stop-color="#e8cf8f" stop-opacity="0"/></radialGradient></defs>
+  ${hasBackground ? '<rect width="1080" height="1350" fill="url(#veil)"/>' : `<rect width="1080" height="1350" fill="url(#base)"/><circle cx="560" cy="880" r="330" fill="url(#sun)"/><path d="M0 1120L540 840L1080 1120V1350H0Z" fill="#173e37"/>${buildings}<path d="M420 1150L540 850L660 1150" fill="#567063"/><path d="M530 1130L540 875" stroke="#e2ca8e" stroke-width="4" stroke-dasharray="22 18"/><rect y="1120" width="1080" height="230" fill="#071c1a"/>`}
+  <path d="M60 74h960M60 74v75M1020 74v75" stroke="#ceb677" stroke-opacity=".6" fill="none"/>
+  <text x="88" y="125" font-family="Arial, Helvetica, sans-serif" font-size="25" fill="#e8d5a0" letter-spacing="1">${escapeXml(cleanText(brandName, 62) || 'ĐỨC VƯỢNG · GÓC NHÌN BẤT ĐỘNG SẢN')}</text>
+  <rect x="88" y="190" width="370" height="44" rx="22" fill="#234941"/><text x="110" y="219" fill="#dbce9f" font-family="Arial, Helvetica, sans-serif" font-size="21">${escapeXml(cleanText(isDemo ? 'NỘI DUNG MẪU' : topic, 30) || 'GÓC NHÌN KHU VỰC')}</text>
+  ${lines.map((line, i) => `<text x="88" y="${330 + i * 80}" fill="${i === lines.length - 1 ? '#e7ca86' : '#faf7ed'}" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700">${escapeXml(line)}</text>`).join('')}
+  <path d="M88 ${365 + lines.length * 80}h90" stroke="#d3b777" stroke-width="5"/>
+  <text x="88" y="1180" fill="#f0e9d8" font-family="Arial, Helvetica, sans-serif" font-size="24">${escapeXml(cleanText([source, date, domain].filter(Boolean).join(' · '), 78))}</text>
+  <text x="88" y="1230" fill="#9eb4a8" font-family="Arial, Helvetica, sans-serif" font-size="21">${isDemo ? 'Nội dung mẫu — không phải tin thực tế' : 'Hình minh họa · Không phải ảnh dự án thực tế'}</text>
+  <text x="88" y="1280" fill="#d6bd81" font-family="Arial, Helvetica, sans-serif" font-size="21" letter-spacing="2">ĐỌC TIN · HIỂU KHU VỰC · THÊM GÓC NHÌN</text></svg>`;
+}
+
+export async function renderCover({ title, topic, isDemo = false, background, source, sourceUrl, sourceSummary, publishedAt, imageKind = 'ai', style = 'editorial', brandName } = {}) {
+  if (style === 'premium') {
+    const overlay = Buffer.from(makePremiumCoverSvg({ title, topic, source, sourceUrl, publishedAt, brandName, isDemo, hasBackground: Boolean(background) }));
+    if (!background) return sharp(overlay).png().toBuffer();
+    if (!Buffer.isBuffer(background) || background.length > 30_000_000) throw new GenerationError('Ảnh nền không hợp lệ hoặc quá lớn.', 'invalid_image', 422);
+    const photo = await sharp(background, { limitInputPixels: 30_000_000 }).rotate().resize(1080, 1350, { fit: 'cover' }).png().toBuffer();
+    return sharp(photo).composite([{ input: overlay }]).png().toBuffer();
+  }
   const overlay = Buffer.from(makeCoverSvg({ title, topic, isDemo, hasBackground: Boolean(background) }));
   if (background) {
     if (!Buffer.isBuffer(background) || background.length > 30_000_000) throw new GenerationError('Ảnh nền không hợp lệ hoặc quá lớn.', 'invalid_image', 422);

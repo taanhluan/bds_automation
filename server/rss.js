@@ -71,12 +71,45 @@ export function normalizeArticleUrl(input) {
   }
 }
 
-function articleTopic(title, summary) {
+export function articleTopic(title, summary) {
   const text = `${title} ${summary}`.toLocaleLowerCase('vi');
   if (/chính sách|pháp lý|thuế|nghị định|thông tư|\bluật\b|sổ đỏ|sổ hồng|cấp phép|đất đai/u.test(text)) return 'Chính sách';
   if (/quy hoạch|hạ tầng|cao tốc|vành đai|metro|đường sắt|cầu đường|đô thị mới/u.test(text)) return 'Quy hoạch';
   if (/nhà ở|căn hộ|chung cư|biệt thự|nhà phố|nhà đất|mua nhà|thuê nhà/u.test(text)) return 'Nhà ở';
   return 'Thị trường';
+}
+
+/** Import publisher metadata only; never follow redirects or fetch arbitrary user hosts. */
+export async function importArticleLink(input) {
+  const url = normalizeArticleUrl(input);
+  if (!url) throw new Error('Hiện chỉ nhận link bài viết HTTPS của VnExpress.');
+  const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(15000), headers: { Accept: 'text/html' } });
+  if (!response.ok || !response.body) throw new Error('Chưa đọc được bài nguồn. Hãy kiểm tra link và thử lại.');
+  if (!response.headers.get('content-type')?.includes('text/html')) throw new Error('Nguồn không trả về trang bài viết HTML.');
+  const reader = response.body.getReader();
+  const chunks = []; let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_FEED_BYTES) { await reader.cancel(); throw new Error('Trang nguồn vượt giới hạn dung lượng.'); }
+      chunks.push(Buffer.from(value));
+    }
+  } finally { reader.releaseLock(); }
+  const html = Buffer.concat(chunks).toString('utf8');
+  const meta = new Map();
+  for (const tag of html.match(/<meta\b[^>]*>/giu) || []) {
+    const attrs = {};
+    for (const match of tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/gu)) attrs[match[1].toLowerCase()] = match[2] ?? match[3];
+    const key = attrs.property || attrs.name;
+    if (key && attrs.content) meta.set(key.toLowerCase(), attrs.content);
+  }
+  const title = cleanFeedText(meta.get('og:title'), 300);
+  const summary = cleanFeedText(meta.get('og:description') || meta.get('description'), 2400);
+  if (title.length < 8 || summary.length < 40) throw new Error('Bài chưa có đủ tiêu đề/tóm tắt công khai để tạo nội dung.');
+  const date = new Date(meta.get('article:published_time') || '');
+  return { id: createHash('sha256').update(url).digest('hex'), url, title, summary, source: 'VnExpress', publishedAt: Number.isFinite(date.getTime()) ? date.toISOString() : null, fetchedAt: new Date().toISOString(), topic: articleTopic(title, summary), contentScope: 'metadata', isDemo: false, status: 'new' };
 }
 
 function publishedDate(item) {

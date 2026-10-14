@@ -15,7 +15,7 @@ export const config = {
 
 export const defaults = {
   autoFetch: true,
-  autoGenerate: false,
+  autoGenerate: true,
   fetchIntervalMinutes: 15,
   dailyDraftLimit: 50,
   dailyImageLimit: 3,
@@ -25,4 +25,11 @@ export const defaults = {
   writingMode: 'ai',
   focusArea: '',
   projectContext: '',
+  dailyTarget: 5,
+  contentMix: 'mixed',
+  styleSamples: '',
+  styleGuide: 'Giọng Đức Vượng: rõ ràng, gần gũi, phân tích thay đổi khu vực và nhu cầu người mua. Dẫn chứng trước, nhận định có điều kiện sau. Bài dự án nêu đối tượng phù hợp và mời inbox; không tạo khan hiếm giả.',
+  brandName: 'Đức Vượng · Góc nhìn bất động sản',
+  websiteUrl: '',
+  imageStyle: 'premium',
 };

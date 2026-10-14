@@ -219,7 +219,7 @@ test('demo pipeline creates a persisted draft and a valid 1080px PNG without API
   assert.deepEqual([...bytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
   const metadata = await sharp(bytes).metadata();
   assert.equal(metadata.width, 1080);
-  assert.equal(metadata.height, 1080);
+  assert.equal(metadata.height, 1350);
   assert.equal(metadata.format, 'png');
   assert.equal(store.usage('text'), 0);
   assert.equal(store.usage('image'), 0);
@@ -315,7 +315,8 @@ test('automatic generation only processes recent real articles up to the daily c
   const { store } = await setup(t);
   store.saveSettings({ dailyDraftLimit: 2, autoGenerate: true, autoImage: false });
   const now = new Date();
-  const entries = Array.from({ length: 4 }, (_, index) => ({ ...demoArticles()[0], id: `real-${index}`, url: `https://vnexpress.net/test-${10000 + index}.html`, source: 'VnExpress', summary: `Nội dung nguồn độc lập cho bản tin kiểm thử ${index}.`, isDemo: false, contentScope: 'rss', publishedAt: now.toISOString() }));
+  const titles = ['Quy hoạch công viên ven sông tại An Phú', 'Căn hộ dành cho gia đình trẻ tại Bình Chánh', 'Chính sách thuế đất được nghiên cứu thay đổi', 'Thị trường văn phòng cho thuê khu trung tâm'];
+  const entries = Array.from({ length: 4 }, (_, index) => ({ ...demoArticles()[0], title: titles[index], id: `real-${index}`, url: `https://vnexpress.net/test-${10000 + index}.html`, source: 'VnExpress', summary: `Nội dung nguồn độc lập cho bản tin kiểm thử ${index}.`, isDemo: false, contentScope: 'rss', publishedAt: now.toISOString() }));
   entries.push({ ...entries[0], id: 'too-old', url: 'https://vnexpress.net/too-old-20000.html', publishedAt: new Date(now.getTime() - 72 * 3600000).toISOString() });
   entries.push({ ...entries[0], id: 'missing-date', url: 'https://vnexpress.net/no-date-20001.html', publishedAt: null });
   store.importArticles(entries);

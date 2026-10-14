@@ -74,8 +74,10 @@ const draftSchema = {
     contextUsed: { type: 'boolean' },
     reviewFlags: { type: 'array', items: { type: 'string' } },
     imageBrief: { type: 'string' },
+    mechanism: { type: 'string' },
+    audienceNote: { type: 'string' },
   },
-  required: ['status', 'title', 'benefits', 'watchpoint', 'question', 'hashtags', 'contextUsed', 'reviewFlags', 'imageBrief'],
+  required: ['status', 'title', 'benefits', 'watchpoint', 'question', 'hashtags', 'contextUsed', 'reviewFlags', 'imageBrief', 'mechanism', 'audienceNote'],
 };
 
 const SYSTEM_PROMPT = perspectivePrompt;
@@ -115,12 +117,17 @@ export function validateGroundedDraft(draft, article, context = { text: '', urls
       || draft.benefits.some(item => !item || typeof item.condition !== 'string' || !item.condition.trim() || item.condition.length > 230 || typeof item.benefit !== 'string' || !item.benefit.trim() || item.benefit.length > 230)) {
       throw new GenerationError('Thiếu điều kiện hoặc lợi ích để viết nhận định cá nhân.', 'invalid_response');
     }
+    draft = { ...draft, benefits: draft.benefits.map(item => ({ condition: item.condition.trim().replace(/^(?:nếu\s+)+/iu, ''), benefit: item.benefit.trim().replace(/^(?:có thể\s+)+/iu, '') })) };
+    if (draft.benefits.some(item => !item.condition || !item.benefit)) throw new GenerationError('Thiếu nội dung nhận định sau khi chuẩn hóa.', 'invalid_response');
     draft = { ...draft, summary: textValue(article.summary, 2400),
       perspective: `Với mình, điểm đáng cân nhắc là:\n${draft.benefits.map(item => `• Nếu ${item.condition.trim()}, mình cho rằng có thể ${item.benefit.trim()}.`).join('\n')}`,
       facts: [{ statement: textValue(article.summary, 700), sourceField: 'summary' }],
     };
   }
   if (Array.isArray(draft.hashtags)) draft = { ...draft, hashtags: [...new Set(draft.hashtags.map(tag => typeof tag === 'string' ? tag.trim().normalize('NFC') : tag))] };
+  for (const key of ['mechanism', 'audienceNote']) {
+    if (key in draft && (typeof draft[key] !== 'string' || draft[key].length > 450)) throw new GenerationError('Phân tích vượt giới hạn hoặc không hợp lệ.', 'invalid_response');
+  }
   const structured = 'perspective' in draft;
   if (structured) {
     for (const [key, max] of [['summary', 2400], ['perspective', 1400], ['watchpoint', 350], ['question', 180]]) {
@@ -181,7 +188,7 @@ export function validateGroundedDraft(draft, article, context = { text: '', urls
     content: draft.content.trim(),
     facts: draft.facts.map((fact) => fact.sourceField === 'projectContext' ? `${fact.statement.trim()} — Context người dùng: ${projectContext}` : `${fact.statement.trim()} — RSS: ${fact.sourceField === 'title' ? title : fact.sourceField === 'summary' ? summary : fact.evidence}`),
     reviewFlags: [...new Set([RSS_REVIEW_FLAG, ...(draft.contextUsed ? ['Liên hệ dự án dựa trên context người dùng cung cấp, chưa được RSS xác nhận; cần đối chiếu nguồn và thời điểm.'] : []), ...draft.reviewFlags.map((flag) => flag.trim()).filter(Boolean)])],
-    ...(structured ? { summary: draft.summary.trim(), perspective: draft.perspective.trim(), ...(draft.benefits ? { benefits: draft.benefits } : {}), watchpoint: draft.watchpoint.trim(), question: draft.question.trim(), hashtags: draft.hashtags, contextUsed: draft.contextUsed, contextSources: draft.contextUsed ? context.urls : [] } : {}),
+    ...(structured ? { summary: draft.summary.trim(), perspective: draft.perspective.trim(), mechanism: draft.mechanism || '', audienceNote: draft.audienceNote || '', ...(draft.benefits ? { benefits: draft.benefits } : {}), watchpoint: draft.watchpoint.trim(), question: draft.question.trim(), hashtags: draft.hashtags, contextUsed: draft.contextUsed, contextSources: draft.contextUsed ? context.urls : [] } : {}),
     skillVersion: perspectiveVersion,
     imageBrief: draft.imageBrief.trim(),
   };
@@ -216,7 +223,7 @@ export async function buildDraft(article, settings = {}) {
     store: false,
     input: [
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: JSON.stringify({ title, summary, ...(context.text ? { projectContext: context.text } : {}), preferences: { tone: textValue(settings.tone, 200) || 'Gần gũi, trung tính', audience: textValue(settings.audience, 200) || 'Bạn bè trên Facebook cá nhân', focusArea: textValue(settings.focusArea, 140) } }) },
+      { role: 'user', content: JSON.stringify({ title, summary, ...(context.text ? { projectContext: context.text } : {}), styleReference: { guide: textValue(settings.styleGuide, 1200), samples: textValue(settings.styleSamples, 4000) }, preferences: { contentMode: context.text && settings.contentMode === 'project' ? 'project' : 'analysis', tone: textValue(settings.tone, 200) || 'Gần gũi, trung tính', audience: textValue(settings.audience, 200) || 'Bạn bè trên Facebook cá nhân', focusArea: textValue(settings.focusArea, 140) } }) },
     ],
     max_output_tokens: 1200,
     text: { format: { type: 'json_schema', name: 'rss_facebook_draft', strict: true, schema: draftSchema } },
@@ -233,6 +240,7 @@ export async function buildDraft(article, settings = {}) {
   const outputTokens = response.usage?.output_tokens;
   return {
     ...result,
+    contentMode: context.text && result.contextUsed && settings.contentMode === 'project' ? 'project' : 'analysis',
     ...(Number.isInteger(inputTokens) && Number.isInteger(outputTokens) ? { usage: { inputTokens, outputTokens } } : {}),
     provider: 'openai',
   };

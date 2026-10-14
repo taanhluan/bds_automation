@@ -1,6 +1,20 @@
 # Địa Ốc — Content studio
 
-Web app local để lấy RSS BĐS VnExpress, tạo bài nháp tiếng Việt và hình minh họa, sửa/copy nội dung và tải hình để tự đăng Facebook cá nhân.
+Content Studio cho Vượng Nguyễn: tự chọn tin BĐS VnExpress, chuẩn bị bài và hình, hiển thị bản xem trước để kiểm tra và duyệt. Xuất bản Facebook đang tắt theo phạm vi đã chốt.
+
+
+## Bản V2 — chuẩn bị nội dung và duyệt
+
+- Trang mặc định **Chờ duyệt** hiển thị bài và hình cùng nhau, lọc Chờ duyệt / Đã duyệt / Cần bổ sung. Theo dõi tổng bài hôm nay và mục tiêu tự chuẩn bị 3–5 bài.
+- **Tin mới → Thêm bài nguồn** nhận link VnExpress, đọc tiêu đề/tóm tắt công khai; không tải toàn văn. Link thiếu ngày xuất bản vẫn được lưu để người dùng chủ động chọn, không được tự coi là tin mới.
+- **Cài đặt → Giọng riêng & hình ảnh** cho nhập hướng dẫn và bài mẫu (tối đa 4.000 ký tự), chọn phân tích khu vực / giới thiệu dự án / kết hợp; bài mẫu chỉ định hướng giọng văn, không phải nguồn số liệu. Tính năng dùng mẫu trong prompt, không fine-tune model. Thay mẫu làm đổi cache cho bài mới.
+- Nhận định AI thêm cơ chế tác động và nhóm người nên quan tâm. Không có context dự án phù hợp thì dùng bài phân tích khu vực. Giá, ưu đãi và pháp lý phải đến từ context có nguồn, không lấy từ mẫu phong cách.
+- Bìa **Xanh đậm & vàng** ở kích thước 1080×1350; bìa biên tập cũ vẫn dùng được. Có thể ghép ảnh chủ kênh cung cấp hoặc gọi ảnh AI có phí; bìa mặc định được dựng tại máy chủ, miễn phí API ảnh. Bài/hình cũ không bị viết lại hàng loạt.
+- **Duyệt nội dung** yêu cầu xác nhận đã kiểm tra nguồn và hình. Thay nội dung hoặc hình hủy duyệt cũ; hình cũ sau khi sửa bài cần kiểm tra xác nhận lại. Bài mẫu không được duyệt thành bài từ nguồn thật. Có thể loại bài khỏi hàng chờ.
+- **Xuất bản đang tắt** theo xác nhận mới nhất. Duyệt không đánh dấu đã đăng, không gửi nội dung lên Facebook. Chức năng copy/tải vẫn dùng được. Tab Lịch sử cho nhập lượt xem, theo dõi mới, click và khách liên hệ từ số liệu bạn kiểm tra; trường chưa có dữ liệu để trống. Chưa kết nối thống kê Facebook tự động.
+- Dữ liệu local lưu trong SQLite và assets như trước. Render free vẫn có filesystem tạm và có thể ngủ; bản này không biến gói free thành dịch vụ chạy liên tục hoặc lưu trữ bền vững. Banner trong UI báo khi dùng `DATA_DIR=/tmp/...`.
+
+Lần nâng cấp đầu tiên bật tự chuẩn bị và mục tiêu 5 bài/ngày; sau đó tôn trọng thay đổi Cài đặt của người dùng. Hạn mức lượt viết thủ công và ảnh AI vẫn độc lập với mục tiêu tự chuẩn bị.
 
 ## Chạy trên máy
 
@@ -36,7 +50,7 @@ IMAGE_MODEL=gpt-image-1
 
 Hai model là cấu hình ban đầu, phải khả dụng trên tài khoản API của bạn; có thể thay đổi trong `.env.local`. Key chỉ được đọc ở backend. Không đặt key trong biến `VITE_*`, trình duyệt hoặc Git.
 
-Mặc định ứng dụng quét RSS mỗi 15 phút và tắt tự viết hàng loạt. Bấm tạo bài cho tin anh chọn. Nếu bật tự tạo bài, chỉ tin trong 48 giờ được xếp hàng, tối đa 50 lượt tạo bài/ngày theo giờ Việt Nam. LOW_COST_MODE=true tạo bìa PNG miễn phí trên máy và không gọi API ảnh; đặt false để dùng ảnh AI với hạn mức riêng. Có thể tắt tự động hoặc đổi hạn mức ở **Cài đặt**. Tạo lại, lỗi API và yêu cầu chưa xác định kết quả cũng có thể tiêu tốn hạn mức; ứng dụng không tự thử lại yêu cầu AI bị lỗi.
+Mặc định ứng dụng quét RSS mỗi 15 phút và bật tự chuẩn bị, mục tiêu 5 bài/ngày (chọn 3–5 trong Cài đặt). Chọn tin gần đây, lọc khu vực ưu tiên và tránh trùng sự kiện; không viết bù tin yếu chỉ để đủ số. Khi đã có đủ bài hôm nay thì dừng tự chuẩn bị, kể cả bài dùng cache. Vẫn có thể chủ động chọn tin để viết theo hạn mức lượt viết riêng. Nếu bật tự tạo bài, chỉ tin trong 48 giờ được xếp hàng, tối đa 50 lượt tạo bài/ngày theo giờ Việt Nam. LOW_COST_MODE=true tạo bìa PNG miễn phí trên máy và không gọi API ảnh; đặt false để dùng ảnh AI với hạn mức riêng. Có thể tắt tự động hoặc đổi hạn mức ở **Cài đặt**. Tạo lại, lỗi API và yêu cầu chưa xác định kết quả cũng có thể tiêu tốn hạn mức; ứng dụng không tự thử lại yêu cầu AI bị lỗi.
 
 Trong chế độ OpenAI, mỗi lượt viết tin thật mới có thể phát sinh phí; chế độ mẫu cục bộ không gọi API. Hạn mức hiện tại tính theo số lượt yêu cầu, không phải trần tiền. Chưa tích hợp đối soát hóa đơn hoặc ước tính giá theo từng model.
 
@@ -49,7 +63,7 @@ Trong chế độ OpenAI, mỗi lượt viết tin thật mới có thể phát 
 - Bản sửa được giữ riêng với bản AI; tạo lại sinh bài nháp mới.
 - Ảnh AI có nhãn minh họa, hoặc cover đồ họa tạo miễn phí trên máy.
 - Trạng thái lỗi riêng cho ảnh; ảnh lỗi vẫn xem/copy được bài.
-- API chỉ lắng nghe trên loopback; chặn Host/Origin bên ngoài.
+- Dev chỉ lắng nghe trên loopback; bản production dùng Basic Auth, kiểm tra Host/Origin và phục vụ giao diện cùng backend.
 - `.gitignore` loại trừ key, database, hình sinh ra và dependencies.
 
 ## Deploy bản test trên Render
@@ -83,7 +97,7 @@ npm run build
 npm start
 ```
 
-`npm start` phục vụ bản build ở http://localhost:3000, vẫn chạy worker trong cùng process. Build trước khi dùng lệnh này. Tests dùng fixture/mocks và database tạm; không gọi API trả phí.
+`npm start` phục vụ bản build ở http://localhost:3000, vẫn chạy worker trong cùng process. Production bắt buộc có `ACCESS_USERNAME` và `ACCESS_PASSWORD` trong biến môi trường. Build trước khi dùng lệnh này. Tests dùng fixture/mocks và database tạm; không gọi API trả phí.
 
 ## Cấu trúc
 
