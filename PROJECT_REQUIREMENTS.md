@@ -41,7 +41,7 @@ Tin mới/link được gửi → lọc phù hợp và trùng sự kiện → t�
 
 ## Git, hosting và bảo mật
 
-- Repo: https://github.com/taanhluan/bds_automation. Bản phát triển đang ở nhánh `enhance/content-studio-v2`; chưa đồng nghĩa đã lên main/Render.
+- Repo: https://github.com/taanhluan/bds_automation. Người dùng đã duyệt bản dev và yêu cầu đưa lên main/Render ngày 15/10; nhánh phát triển là `enhance/content-studio-v2`. Trạng thái deploy thực tế được ghi sau khi Render hoàn tất.
 - Link Render test hiện có: https://bds-automation-test.onrender.com. Dùng backend để gọi AI, key trong Environment của Render/.env.local; không để key trong Git, bundle frontend, biến VITE_*, log hoặc tài liệu. Không lưu cookie/mật khẩu người dùng vào MD.
 - Người dùng muốn link dễ chia sẻ để test vẫn gọi AI an toàn. Render chạy backend + frontend và Basic Auth. GitHub Pages một mình không giữ được bí mật của API key gọi từ trình duyệt.
 - Render free có thể ngủ và dùng storage tạm; chưa đáp ứng chạy liên tục/lưu bền qua redeploy. Bản local dùng SQLite và assets. Nâng hosting bền vững là phần còn mở.
@@ -57,3 +57,7 @@ Tin mới/link được gửi → lọc phù hợp và trùng sự kiện → t�
 ## Phần còn mở
 
 Xuất bản vào tài khoản cá nhân, chỉ số nền tảng tự động, hosting chạy liên tục/lưu bền, website đích, nguồn báo bổ sung, ngân sách tiền và tỷ lệ phân tích/bán hàng. Không mô tả các phần này là đã hoàn thành.
+
+## Yêu cầu phát hành và đo chi phí — 15/10/2026
+
+Người dùng đã đồng ý đưa bản mới lên GitHub/main và Render, đồng thời yêu cầu không publish credentials và đo chi phí một bài. Phát hành ứng dụng không đồng nghĩa bật đăng Facebook. Đã quét lịch sử Git; đo usage một bài thành công gồm nội dung + ảnh High, chi phí niêm yết Standard khoảng 0,0451 USD. Chi tiết, công thức và giới hạn trong COST_REPORT.md. Không gọi thêm API trả phí để lấy mẫu.

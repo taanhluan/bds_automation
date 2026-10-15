@@ -8,7 +8,7 @@ Content Studio cho Vượng Nguyễn: tự chọn tin BĐS VnExpress, chuẩn b�
 - Quy tắc giọng chuyên gia được nạp từ [CONTENT_PLAYBOOK.md](CONTENT_PLAYBOOK.md), thay đổi làm đổi cache khi khởi động lại backend. Không dùng “góc nhìn của mình”, “với mình” hoặc lối tự xưng tương tự trong phần AI viết. Bài cũ giữ nguyên để chủ kênh chỉnh hoặc tạo lại; khâu duyệt báo nếu còn cách viết cũ.
 - Tổng hợp yêu cầu và quyết định hiện hành tại [PROJECT_REQUIREMENTS.md](PROJECT_REQUIREMENTS.md); [AGENTS.md](AGENTS.md) yêu cầu những lần phát triển sau đọc và cập nhật bộ nhớ này. Đây là quy tắc được lưu và dùng lại, chưa phải fine-tune hoặc tự học từ mọi bản sửa.
 - Tác vụ ảnh lưu model/chất lượng/kiểu bìa tại lúc xếp hàng; mỗi yêu cầu một ảnh. Lỗi API hiển thị rõ, không tự thử lại hoặc giả ảnh chân thực bằng bìa hình học.
-- Chưa gọi API ảnh trả phí để đánh giá hình thực tế trong lượt nâng cấp này; khả dụng model phụ thuộc API project. Bản phát triển chưa lên main/Render.
+- Đã có lượt tạo ảnh High thành công trong quá trình sử dụng; đã đo usage một bài gồm chữ và ảnh tại [COST_REPORT.md](COST_REPORT.md). Người dùng đã duyệt phát hành lên main/Render ngày 15/10; trạng thái deploy được cập nhật sau khi hoàn tất.
 
 ## Bản V2 — chuẩn bị nội dung và duyệt
 
