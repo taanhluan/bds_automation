@@ -120,7 +120,7 @@ export function validateGroundedDraft(draft, article, context = { text: '', urls
     draft = { ...draft, benefits: draft.benefits.map(item => ({ condition: item.condition.trim().replace(/^(?:nếu\s+)+/iu, ''), benefit: item.benefit.trim().replace(/^(?:có thể\s+)+/iu, '') })) };
     if (draft.benefits.some(item => !item.condition || !item.benefit)) throw new GenerationError('Thiếu nội dung nhận định sau khi chuẩn hóa.', 'invalid_response');
     draft = { ...draft, summary: textValue(article.summary, 2400),
-      perspective: `Với mình, điểm đáng cân nhắc là:\n${draft.benefits.map(item => `• Nếu ${item.condition.trim()}, mình cho rằng có thể ${item.benefit.trim()}.`).join('\n')}`,
+      perspective: draft.benefits.map(item => `• Nếu ${item.condition.trim()}, có thể ${item.benefit.trim()}.`).join('\n'),
       facts: [{ statement: textValue(article.summary, 700), sourceField: 'summary' }],
     };
   }
@@ -175,6 +175,10 @@ export function validateGroundedDraft(draft, article, context = { text: '', urls
     }
   }
   const generatedText = [draft.title, draft.content, ...draft.facts.map((fact) => fact.statement)].join('\n');
+  const authoredText = [draft.title, draft.perspective, draft.mechanism, draft.audienceNote, draft.watchpoint, draft.question].filter(Boolean).join('\n');
+  if (/góc nhìn của mình|với mình|theo mình|mình cho rằng|mình nghĩ|mình thấy|theo quan điểm của mình|(?:^|[^\p{L}])mình(?:$|[^\p{L}])|anh em/iu.test(authoredText)) {
+    throw new GenerationError('Giọng viết chưa đúng quy tắc chuyên nghiệp đã chốt. Chỉnh hướng dẫn hoặc tạo bản mới; không tự gọi lại API.', 'invalid_response');
+  }
   const sourceNumbers = new Set(numbersIn(source));
   if (numbersIn(generatedText).some((number) => !sourceNumbers.has(number))) {
     throw new GenerationError('Bản nháp có số liệu không xuất hiện trong nguồn RSS. Cần kiểm tra bài gốc.', 'needs_context', 422);
@@ -195,7 +199,7 @@ export function validateGroundedDraft(draft, article, context = { text: '', urls
 }
 
 function demoDraft(article) {
-  const title = textValue(article.title, 120) || 'Một góc nhìn về không gian sống';
+  const title = textValue(article.title, 120) || 'Phân tích không gian sống';
   const summary = textValue(article.summary, 1200).replace(/^Nội dung mẫu để thử ứng dụng, không phải tin báo thực tế\.\s*/u, '');
   const question = article.topic === 'Quy hoạch' ? 'Bạn thường kiểm tra nguồn nào khi đọc một thông tin quy hoạch?' : article.topic === 'Thị trường' ? 'Theo bạn, cần thêm thông tin gì trước khi so sánh các mức giá?' : 'Với bạn, điều gì quan trọng nhất khi chọn một nơi để gọi là nhà?';
   return {

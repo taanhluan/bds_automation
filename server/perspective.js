@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
-export const perspectivePrompt = readFileSync(new URL('../skills/rss-property-perspective/references/runtime.txt', import.meta.url), 'utf8').trim();
+export const contentPlaybook = readFileSync(new URL('../CONTENT_PLAYBOOK.md', import.meta.url), 'utf8').trim();
+export const writingPlaybook = contentPlaybook.split('## Giọng viết')[1].split('## Hình ảnh')[0].trim();
+export const imagePlaybook = contentPlaybook.split('## Hình ảnh')[1].trim();
+export const perspectivePrompt = `${readFileSync(new URL('../skills/rss-property-perspective/references/runtime.txt', import.meta.url), 'utf8').trim()}\n\nMandatory owner writing rules (override conflicting style samples):\n${writingPlaybook}`;
 export const perspectiveVersion = createHash('sha256').update(perspectivePrompt).digest('hex').slice(0, 16);
 const fold = value => String(value || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/đ/gu, 'd').replace(/[^a-z0-9]+/gu, ' ').trim();
 
@@ -34,27 +37,27 @@ export function selectProjectContext(article, settings = {}) {
 }
 
 export function composePerspective(parts) {
-  return [parts.summary, parts.mechanism && `📍 Vì sao đáng chú ý\n${parts.mechanism}`, `💭 Góc nhìn của mình\n${parts.perspective}`, parts.audienceNote && `👥 Ai nên quan tâm\n${parts.audienceNote}`, `🔎 Điều cần theo dõi\n${parts.watchpoint}`, parts.question, parts.hashtags.join(' ')].filter(Boolean).join('\n\n');
+  return [parts.summary, parts.mechanism && `📍 Tác động đối với khu vực\n${parts.mechanism}`, `💡 Triển vọng và điều kiện\n${parts.perspective}`, parts.audienceNote && `👥 Ai nên quan tâm\n${parts.audienceNote}`, `🔎 Điểm cần theo dõi\n${parts.watchpoint}`, parts.question, parts.hashtags.join(' ')].filter(Boolean).join('\n\n');
 }
 
 export function localPerspective(article, settings = {}) {
   const source = `${article.title} ${article.summary}`;
   const angle = /sân bay|cao tốc|metro|giao thông|nút giao|cầu đường/iu.test(source)
-    ? 'Với mình, kết nối thuận tiện là một tiêu chí đáng cân nhắc khi chọn nơi ở. Nếu hạ tầng liên quan được triển khai đúng kế hoạch và phục vụ nhu cầu đi lại thực tế, khu vực có thể hấp dẫn hơn về tính tiện dụng. Mình vẫn muốn nhìn vào tiến độ thực hiện trước khi đánh giá xa hơn.'
+    ? 'Nếu hạ tầng liên quan được triển khai đúng kế hoạch và phục vụ nhu cầu đi lại thực tế, khu vực có thể cải thiện tính thuận tiện cho cư dân. Cần đánh giá tiến độ thực hiện và khả năng kết nối với nơi ở, nơi làm việc trước khi kết luận về tác động dài hạn.'
     : /quy hoạch|tái định cư/iu.test(source)
-      ? 'Với mình, quy hoạch rõ ràng là điểm khởi đầu đáng quan tâm khi tìm hiểu một khu vực. Nếu được thực hiện đồng bộ với tiện ích và nhu cầu ở thực tế, kế hoạch có thể góp phần tạo môi trường sống thuận tiện hơn. Mình sẽ theo dõi cách triển khai thay vì chỉ nhìn vào kỳ vọng.'
-      : 'Với mình, sức hút của một nơi ở nên được nhìn từ nhu cầu sử dụng thực tế: không gian sống, tiện ích và khả năng phù hợp với gia đình. Nếu những yếu tố đó được đáp ứng tốt, khu vực có thể có lợi thế về tính đáng sống. Một bản tin vẫn chưa đủ để kết luận về tiềm năng tăng giá.';
+      ? 'Nếu quy hoạch được thực hiện đồng bộ với tiện ích và nhu cầu ở thực tế, khu vực có thể cải thiện chất lượng môi trường sống. Cần phân biệt kế hoạch, quyết định phê duyệt và tiến độ triển khai khi đánh giá khả năng đáp ứng nhu cầu cư dân.'
+      : 'Nếu không gian sống, tiện ích và khả năng sử dụng đáp ứng nhu cầu của người mua, khu vực có thể có lợi thế trong việc phục vụ nhu cầu ở thực. Một bản tin riêng lẻ chưa đủ cơ sở để kết luận về khả năng tăng giá.';
   const parts = {
     summary: String(article.summary).slice(0, 2400), perspective: angle,
     watchpoint: 'Cần đọc bài gốc và đối chiếu thông tin hiện hành; phân biệt kế hoạch, phê duyệt và thực tế triển khai.',
-    question: 'Anh em đánh giá yếu tố nào đáng theo dõi nhất trong câu chuyện này?',
-    hashtags: ['#BatDongSan', '#GocNhinCaNhan'], contextUsed: false,
+    question: 'Yếu tố nào trong thông tin này cần được làm rõ trước khi đánh giá tác động đối với người mua nhà?',
+    hashtags: ['#BatDongSan', '#PhanTichKhuVuc'], contextUsed: false,
   };
   return {
     ...parts, title: String(article.title).slice(0, 150), content: composePerspective(parts),
     facts: [`${parts.summary} — RSS: ${parts.summary}`],
     reviewFlags: ['Mẫu cục bộ miễn phí, không gọi ChatGPT. Phần nhận định là khung tham khảo, cần chỉnh lại theo quan điểm của anh.', 'Chỉ dựa trên tiêu đề và tóm tắt RSS. Cần đọc bài gốc, kiểm tra dữ kiện trước khi đăng.', ...(settings.projectContext?.trim() ? ['Chế độ mẫu không tự liên hệ dự án; chọn OpenAI để diễn giải context liên quan.'] : [])],
-    imageBrief: 'Bìa đồ họa về nhà ở và không gian sống, không mô phỏng dự án thực tế.',
+    imageBrief: 'Ảnh minh họa chân thực về nhà ở và không gian sống; không tái hiện dự án cụ thể.',
     provider: 'local', skillVersion: perspectiveVersion,
   };
 }

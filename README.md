@@ -3,13 +3,20 @@
 Content Studio cho Vượng Nguyễn: tự chọn tin BĐS VnExpress, chuẩn bị bài và hình, hiển thị bản xem trước để kiểm tra và duyệt. Xuất bản Facebook đang tắt theo phạm vi đã chốt.
 
 
+## Bản V3 — ảnh chân thực và bộ nhớ quy tắc
+
+- Quy tắc giọng chuyên gia được nạp từ [CONTENT_PLAYBOOK.md](CONTENT_PLAYBOOK.md), thay đổi làm đổi cache khi khởi động lại backend. Không dùng “góc nhìn của mình”, “với mình” hoặc lối tự xưng tương tự trong phần AI viết. Bài cũ giữ nguyên để chủ kênh chỉnh hoặc tạo lại; khâu duyệt báo nếu còn cách viết cũ.
+- Tổng hợp yêu cầu và quyết định hiện hành tại [PROJECT_REQUIREMENTS.md](PROJECT_REQUIREMENTS.md); [AGENTS.md](AGENTS.md) yêu cầu những lần phát triển sau đọc và cập nhật bộ nhớ này. Đây là quy tắc được lưu và dùng lại, chưa phải fine-tune hoặc tự học từ mọi bản sửa.
+- Tác vụ ảnh lưu model/chất lượng/kiểu bìa tại lúc xếp hàng; mỗi yêu cầu một ảnh. Lỗi API hiển thị rõ, không tự thử lại hoặc giả ảnh chân thực bằng bìa hình học.
+- Chưa gọi API ảnh trả phí để đánh giá hình thực tế trong lượt nâng cấp này; khả dụng model phụ thuộc API project. Bản phát triển chưa lên main/Render.
+
 ## Bản V2 — chuẩn bị nội dung và duyệt
 
 - Trang mặc định **Chờ duyệt** hiển thị bài và hình cùng nhau, lọc Chờ duyệt / Đã duyệt / Cần bổ sung. Theo dõi tổng bài hôm nay và mục tiêu tự chuẩn bị 3–5 bài.
 - **Tin mới → Thêm bài nguồn** nhận link VnExpress, đọc tiêu đề/tóm tắt công khai; không tải toàn văn. Link thiếu ngày xuất bản vẫn được lưu để người dùng chủ động chọn, không được tự coi là tin mới.
 - **Cài đặt → Giọng riêng & hình ảnh** cho nhập hướng dẫn và bài mẫu (tối đa 4.000 ký tự), chọn phân tích khu vực / giới thiệu dự án / kết hợp; bài mẫu chỉ định hướng giọng văn, không phải nguồn số liệu. Tính năng dùng mẫu trong prompt, không fine-tune model. Thay mẫu làm đổi cache cho bài mới.
 - Nhận định AI thêm cơ chế tác động và nhóm người nên quan tâm. Không có context dự án phù hợp thì dùng bài phân tích khu vực. Giá, ưu đãi và pháp lý phải đến từ context có nguồn, không lấy từ mẫu phong cách.
-- Bìa **Xanh đậm & vàng** ở kích thước 1080×1350; bìa biên tập cũ vẫn dùng được. Có thể ghép ảnh chủ kênh cung cấp hoặc gọi ảnh AI có phí; bìa mặc định được dựng tại máy chủ, miễn phí API ảnh. Bài/hình cũ không bị viết lại hàng loạt.
+- Mặc định mới dùng **ảnh chân thực**, GPT Image 2.5 Flare, chất lượng **high**, bìa 1080×1350. Ảnh chiếm khoảng 74% khung, giữ màu tự nhiên; chữ ở vùng sáng phía dưới. Model/chất lượng và chế độ AI/bìa miễn phí chọn trong Cài đặt. Có thể ghép ảnh thật chủ kênh cung cấp. Bài/hình cũ không bị viết lại hàng loạt; mở bài và chọn tạo ảnh AI để nâng từng ảnh.
 - **Duyệt nội dung** yêu cầu xác nhận đã kiểm tra nguồn và hình. Thay nội dung hoặc hình hủy duyệt cũ; hình cũ sau khi sửa bài cần kiểm tra xác nhận lại. Bài mẫu không được duyệt thành bài từ nguồn thật. Có thể loại bài khỏi hàng chờ.
 - **Xuất bản đang tắt** theo xác nhận mới nhất. Duyệt không đánh dấu đã đăng, không gửi nội dung lên Facebook. Chức năng copy/tải vẫn dùng được. Tab Lịch sử cho nhập lượt xem, theo dõi mới, click và khách liên hệ từ số liệu bạn kiểm tra; trường chưa có dữ liệu để trống. Chưa kết nối thống kê Facebook tự động.
 - Dữ liệu local lưu trong SQLite và assets như trước. Render free vẫn có filesystem tạm và có thể ngủ; bản này không biến gói free thành dịch vụ chạy liên tục hoặc lưu trữ bền vững. Banner trong UI báo khi dùng `DATA_DIR=/tmp/...`.
@@ -45,12 +52,12 @@ Copy `.env.example` thành `.env.local`, điền key của bạn rồi khởi đ
 OPENAI_API_KEY=điền_key_của_bạn
 TEXT_MODEL=gpt-4o-mini
 LOW_COST_MODE=true
-IMAGE_MODEL=gpt-image-1
+IMAGE_MODEL=gpt-image-2.5-flare
 ```
 
 Hai model là cấu hình ban đầu, phải khả dụng trên tài khoản API của bạn; có thể thay đổi trong `.env.local`. Key chỉ được đọc ở backend. Không đặt key trong biến `VITE_*`, trình duyệt hoặc Git.
 
-Mặc định ứng dụng quét RSS mỗi 15 phút và bật tự chuẩn bị, mục tiêu 5 bài/ngày (chọn 3–5 trong Cài đặt). Chọn tin gần đây, lọc khu vực ưu tiên và tránh trùng sự kiện; không viết bù tin yếu chỉ để đủ số. Khi đã có đủ bài hôm nay thì dừng tự chuẩn bị, kể cả bài dùng cache. Vẫn có thể chủ động chọn tin để viết theo hạn mức lượt viết riêng. Nếu bật tự tạo bài, chỉ tin trong 48 giờ được xếp hàng, tối đa 50 lượt tạo bài/ngày theo giờ Việt Nam. LOW_COST_MODE=true tạo bìa PNG miễn phí trên máy và không gọi API ảnh; đặt false để dùng ảnh AI với hạn mức riêng. Có thể tắt tự động hoặc đổi hạn mức ở **Cài đặt**. Tạo lại, lỗi API và yêu cầu chưa xác định kết quả cũng có thể tiêu tốn hạn mức; ứng dụng không tự thử lại yêu cầu AI bị lỗi.
+Mặc định ứng dụng quét RSS mỗi 15 phút và bật tự chuẩn bị, mục tiêu 5 bài/ngày (chọn 3–5 trong Cài đặt). Chọn tin gần đây, lọc khu vực ưu tiên và tránh trùng sự kiện; không viết bù tin yếu chỉ để đủ số. Khi đã có đủ bài hôm nay thì dừng tự chuẩn bị, kể cả bài dùng cache. Vẫn có thể chủ động chọn tin để viết theo hạn mức lượt viết riêng. Nếu bật tự tạo bài, chỉ tin trong 48 giờ được xếp hàng, tối đa 50 lượt tạo bài/ngày theo giờ Việt Nam. Chế độ ảnh trong Cài đặt quyết định gọi AI hay dựng bìa miễn phí; LOW_COST_MODE không ghi đè lựa chọn này. Mặc định ảnh AI chất lượng high, tối đa 5 lượt/ngày. Chế độ viết miễn phí và tin mẫu không tự gọi API ảnh. Có thể tắt tự động hoặc đổi hạn mức ở **Cài đặt**. Tạo lại, lỗi API và yêu cầu chưa xác định kết quả cũng có thể tiêu tốn hạn mức; ứng dụng không tự thử lại yêu cầu AI bị lỗi.
 
 Trong chế độ OpenAI, mỗi lượt viết tin thật mới có thể phát sinh phí; chế độ mẫu cục bộ không gọi API. Hạn mức hiện tại tính theo số lượt yêu cầu, không phải trần tiền. Chưa tích hợp đối soát hóa đơn hoặc ước tính giá theo từng model.
 
@@ -68,7 +75,7 @@ Trong chế độ OpenAI, mỗi lượt viết tin thật mới có thể phát 
 
 ## Deploy bản test trên Render
 
-Repo có `render.yaml` để tạo web service miễn phí cho bản test. Service chạy cả Express và giao diện, dùng Basic Auth để người có link phải nhập thông tin truy cập. Render tự tạo `ACCESS_PASSWORD`; `OPENAI_API_KEY` được nhập riêng trong bước tạo Blueprint/Dashboard, không lưu trong Git. Không dùng key đã lộ trước đây; hãy tạo key mới rồi nhập vào Render. `LOW_COST_MODE=true` giữ tính năng tạo ảnh tự động ở chế độ miễn phí.
+Repo có `render.yaml` để tạo web service miễn phí cho bản test. Service chạy cả Express và giao diện, dùng Basic Auth để người có link phải nhập thông tin truy cập. Render tự tạo `ACCESS_PASSWORD`; `OPENAI_API_KEY` được nhập riêng trong bước tạo Blueprint/Dashboard, không lưu trong Git. Không dùng key đã lộ trước đây; hãy tạo key mới rồi nhập vào Render. Chọn **Bìa đồ họa · Miễn phí API ảnh** trong Cài đặt nếu cần tắt ảnh AI trả phí. Model/chất lượng ảnh và hạn mức ngày được cấu hình riêng.
 
 Tạo service: mở Render Dashboard → **New → Blueprint**, chọn repo `taanhluan/bds_automation`, kiểm tra cấu hình `render.yaml`, nhập `OPENAI_API_KEY` mới khi được hỏi rồi tạo service. Sau khi deploy xong, lấy URL `onrender.com` và giá trị `ACCESS_PASSWORD` trong Environment của service để gửi cho người thử; username là `tester`. Không đưa mật khẩu test vào repo. Gửi mật khẩu qua kênh riêng.
 

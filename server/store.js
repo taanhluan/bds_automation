@@ -152,7 +152,7 @@ export function validateSettings(input, previous = defaults) {
       next[key] = input[key].trim();
     }
   }
-  for (const [key, values] of [['contentMix', ['mixed', 'analysis', 'project']], ['imageStyle', ['premium', 'editorial']]]) {
+  for (const [key, values] of [['contentMix', ['mixed', 'analysis', 'project']], ['imageStyle', ['photo', 'premium', 'editorial']], ['imageMode', ['ai', 'template']], ['imageModel', ['gpt-image-2.5-flare', 'gpt-image-2.5-sunburst', 'gpt-image-2', 'gpt-image-1.5', 'gpt-image-1']], ['imageQuality', ['medium', 'high']]]) {
     if (key in input) {
       if (!values.includes(input[key])) throw new Error(`${key} không hợp lệ.`);
       next[key] = input[key];

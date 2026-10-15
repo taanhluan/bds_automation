@@ -50,6 +50,7 @@ export function reviewDraft(draft, article) {
     { id: 'source', label: 'Nguồn chưa thay đổi', ok: !article?.sourceUpdated || (draft.sourceTitle === article.title && draft.sourceSummary === article.summary) },
     { id: 'numbers', label: 'Số liệu khớp nguồn đã lưu', ok: supportedNumbers },
     { id: 'claims', label: 'Không thêm cam kết ngoài nguồn', ok: !unsupportedClaims.some(claim => text.toLowerCase().includes(claim) && !source.toLowerCase().includes(claim)) },
+    { id: 'style', label: 'Giọng viết chuyên nghiệp, không xưng mình', ok: !/góc nhìn của mình|với mình|theo mình|mình cho rằng|mình nghĩ|mình thấy|theo quan điểm của mình|(?:^|[^\p{L}])mình(?:$|[^\p{L}])|anh em/iu.test(text.replace(draft.sourceSummary || article?.summary || '\u0000', '')) },
     { id: 'image', label: 'Hình đã sẵn sàng', ok: Boolean(draft.imageUrl && draft.imageStatus === 'ready') },
     { id: 'version', label: 'Hình khớp phiên bản bài', ok: (draft.imageContentRevision || 1) === (draft.contentRevision || 1) },
     { id: 'real', label: 'Bài từ nguồn thật', ok: !draft.isDemo && !article?.isDemo },

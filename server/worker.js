@@ -27,12 +27,13 @@ export function createWorker(store, dependencies = {}) {
   }
 
   function enqueueImage(draftId, { templateOnly = false, useAI = false } = {}) {
-    templateOnly = templateOnly || (deps.lowCostMode && !useAI);
+    const settings = store.settings();
+    templateOnly = templateOnly || (!useAI && (settings.imageMode === 'template' || settings.writingMode === 'free'));
     const draft = store.draft(draftId);
     if (!draft) throw new Error('Không tìm thấy bài nháp.');
     const article = store.article(draft.articleId);
     if (!article?.isDemo && !templateOnly && !deps.aiConfigured) throw new Error('Cần OPENAI_API_KEY để tạo ảnh AI.');
-    const job = store.addJob('generate_image', { articleId: draft.articleId, draftId, draftSnapshot: draft, templateOnly });
+    const job = store.addJob('generate_image', { articleId: draft.articleId, draftId, draftSnapshot: draft, templateOnly, imageSettings: { model: settings.imageModel || config.imageModel, quality: settings.imageQuality || 'high', style: settings.imageStyle, brandName: settings.brandName } });
     store.saveDraft({ ...draft, imageStatus: 'pending', imageError: null });
     return job;
   }
@@ -89,7 +90,7 @@ export function createWorker(store, dependencies = {}) {
     if (!article.isDemo && !cached) store.cacheGeneration(cacheKey, result);
     const now = new Date().toISOString();
     let content = result.content.trim();
-    if (!article.isDemo && settings.websiteUrl) content += `\n\nĐọc thêm tại website của mình:\n${settings.websiteUrl}`;
+    if (!article.isDemo && settings.websiteUrl) content += `\n\nThông tin chi tiết:\n${settings.websiteUrl}`;
     if (!article.isDemo && !content.includes(article.url)) content += `\n\nNguồn: ${article.source}\n${article.url}`;
     const draft = {
       id: randomUUID(), articleId: article.id,
@@ -123,19 +124,20 @@ export function createWorker(store, dependencies = {}) {
     const draft = job.draftSnapshot || current;
     store.saveDraft({ ...current, imageStatus: 'processing', imageError: null });
     let background;
+    const imageSettings = job.imageSettings || { model: config.imageModel, quality: 'high', style: draft.imageStyle || store.settings().imageStyle, brandName: draft.brandName || store.settings().brandName };
     if (!draft.isDemo && !job.templateOnly) {
       store.reserve(job, 'image', store.settings().dailyImageLimit);
-      const result = await deps.generateBackground(draft.imageBrief);
+      const result = await deps.generateBackground(draft.imageBrief, { ...imageSettings, sourceTitle: draft.sourceTitle || draft.title, sourceSummary: draft.sourceSummary });
       background = result.buffer;
-      store.recordUsage(job, { status: 'completed', ...(result.usage || {}) });
+      store.recordUsage(job, { status: 'completed', model: imageSettings.model, quality: imageSettings.quality, ...(result.usage || {}) });
     }
     const article = store.article(draft.articleId);
-    const png = await deps.renderCover({ title: draft.title, topic: article?.topic || 'Bất động sản', isDemo: draft.isDemo, background, source: article?.source, sourceUrl: article?.url, sourceSummary: draft.sourceSummary || article?.summary, publishedAt: article?.publishedAt, style: draft.imageStyle || store.settings().imageStyle, brandName: draft.brandName || store.settings().brandName });
+    const png = await deps.renderCover({ title: draft.title, topic: article?.topic || 'Bất động sản', isDemo: draft.isDemo, background, source: article?.source, sourceUrl: article?.url, sourceSummary: draft.sourceSummary || article?.summary, publishedAt: article?.publishedAt, style: imageSettings.style, brandName: imageSettings.brandName });
     const filename = `${job.id}.png`;
     await fs.writeFile(`${store.assetsDir}/${filename}`, png, { flag: 'wx' });
     const latest = store.draft(draft.id);
     const changed = (latest.contentRevision || 1) !== (draft.contentRevision || 1);
-    store.saveDraft({ ...latest, approval: null, imageUrl: `/api/assets/${filename}`, imageStatus: changed ? 'stale' : 'ready', imageError: changed ? 'Bài đã được sửa trong lúc tạo ảnh. Kiểm tra hình trước khi sử dụng.' : null, imageContentRevision: draft.contentRevision || 1, imageKind: background ? 'ai' : 'template' });
+    store.saveDraft({ ...latest, approval: null, imageUrl: `/api/assets/${filename}`, imageStatus: changed ? 'stale' : 'ready', imageError: changed ? 'Bài đã được sửa trong lúc tạo ảnh. Kiểm tra hình trước khi sử dụng.' : null, imageContentRevision: draft.contentRevision || 1, imageKind: background ? 'ai' : 'template', imageStyle: imageSettings.style, imageModel: background ? imageSettings.model : null, imageQuality: background ? imageSettings.quality : null });
   }
 
   async function runOnce() {

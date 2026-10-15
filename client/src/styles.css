@@ -809,6 +809,7 @@ h1 { font-size: clamp(28px, 2.5vw, 36px); font-weight: 650; letter-spacing: -.03
 .preview-author { display:flex; align-items:center; gap:12px; padding:16px 0; }
 .preview-author>span:last-child { font-size:12px; color:#7d8878; margin-left:auto; }
 .preview-post-image { display:block; max-width:100%; width:460px; border-radius:10px; margin:20px auto; }
+.editor-assets .generated-image { height:auto; aspect-ratio:4/5; background:#f4f5ef; }
 .import-link { background:#fff; border:1px solid #e1e7dc; border-radius:14px; padding:22px; margin:22px 0; }
 .import-link label { display:block; font-size:14px; font-weight:600; margin-bottom:12px; }
 .import-link>div { display:flex; gap:12px; }

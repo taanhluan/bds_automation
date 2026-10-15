@@ -1,5 +1,7 @@
 # Yêu cầu nâng cấp Content Studio — cập nhật theo xác nhận người dùng
 
+Bản nghiên cứu và lịch sử. Yêu cầu hiện hành, thay đổi giọng văn/ảnh và trạng thái triển khai được tổng hợp trong [PROJECT_REQUIREMENTS.md](PROJECT_REQUIREMENTS.md).
+
 Ngày lập: 14/10/2026. Phạm vi: nghiên cứu nội dung và chốt yêu cầu; chưa thiết kế giải pháp hoặc triển khai.
 
 ## 1. Cơ sở và phạm vi quan sát
@@ -103,3 +105,7 @@ Các quyết định nghiệp vụ ở mục 6 đã được người dùng xác
 ## 7. Điều chỉnh phạm vi khi bắt đầu phát triển
 
 Người dùng đã xác nhận trong bước triển khai: **giữ tài khoản cá nhân Vượng Nguyễn; hoàn thiện nội dung trước, chưa bật xuất bản**. Vì vậy REQ-09 được hoãn; bản hiện tại lưu trạng thái duyệt riêng và không gửi bài lên Facebook. REQ-12 hỗ trợ ghi nhận thủ công các chỉ số đã kiểm tra, chưa tích hợp dữ liệu nền tảng tự động; không báo chỉ số khi chưa có dữ liệu. REQ-11 đáp ứng lưu trữ local; lưu trữ bền vững và chạy liên tục trên Render free vẫn là giới hạn hosting cần xử lý riêng.
+
+## 8. Phản hồi nâng cấp 15/10/2026
+
+Người dùng yêu cầu hình chân thực, trực quan và đẹp hơn; cho phép nâng model ảnh. Không dùng “góc nhìn của mình”, “với mình” hoặc lối tự xưng tương tự. Toàn bộ yêu cầu được lưu vào PROJECT_REQUIREMENTS.md; CONTENT_PLAYBOOK.md là bộ quy tắc được backend nạp vào prompt. Các quan sát giọng cá nhân/poster ở trên là lịch sử phân tích, không phải phong cách hiện hành. Xuất bản vẫn tắt.

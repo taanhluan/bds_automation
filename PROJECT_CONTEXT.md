@@ -1,6 +1,6 @@
 # FB_CT — Context dự án
 
-Cập nhật: 13/10/2026. Theo yêu cầu tiếp theo, đã dựng bản local bằng Node.js + React/Vite + Express + SQLite để chạy `npm run dev`. Xem [README.md](README.md) cho hướng dẫn và phạm vi thực tế. Các phần bên dưới lưu bối cảnh thiết kế ban đầu.
+Cập nhật: 15/10/2026. Yêu cầu hiện hành và phản hồi mới nhất: [PROJECT_REQUIREMENTS.md](PROJECT_REQUIREMENTS.md); quy tắc được backend nạp: [CONTENT_PLAYBOOK.md](CONTENT_PLAYBOOK.md). Các phần đề xuất ban đầu bên dưới là lịch sử, không ghi đè quyết định hiện hành. Theo yêu cầu tiếp theo, đã dựng bản local bằng Node.js + React/Vite + Express + SQLite để chạy `npm run dev`. Xem [README.md](README.md) cho hướng dẫn và phạm vi thực tế. Các phần bên dưới lưu bối cảnh thiết kế ban đầu.
 
 ## Mục tiêu
 

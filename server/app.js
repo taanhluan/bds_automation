@@ -68,7 +68,7 @@ export function createApp(store, worker) {
       if (article?.sourceUpdated && (draft.sourceSummary !== article.summary || draft.sourceTitle !== article.title)) return { ...reviewed, reviewFlags: [...(draft.reviewFlags || []), 'Nguồn đã được cập nhật sau khi tạo bài; cần đối chiếu lại.'] };
       return reviewed;
     });
-    res.json({ articles, drafts, jobs: store.jobs(), settings: store.settings(), status: { aiConfigured: config.aiConfigured, lowCostMode: config.lowCostMode, textModel: config.textModel, imageModel: config.imageModel, lastFetchedAt: store.meta('lastFetchedAt'), feedError: store.meta('feedError') || null, workerBusy: worker.busy, publishingEnabled: false, targetProfile: 'https://www.facebook.com/vuong.nguyen.8694', temporaryStorage: config.production && config.dataDir.startsWith('/tmp/') }, stats: { articles: articles.length, drafts: drafts.filter((d) => d.status === 'draft').length, posted: drafts.filter((d) => d.status === 'posted').length, todayGenerated: store.draftUsage(), todayPrepared: dailyPrepared(store), approved: drafts.filter(d => d.review.status === 'approved').length, todayImages: store.usage('image') } });
+    res.json({ articles, drafts, jobs: store.jobs(), settings: store.settings(), status: { aiConfigured: config.aiConfigured, lowCostMode: config.lowCostMode, textModel: config.textModel, imageModel: store.settings().imageModel, imageQuality: store.settings().imageQuality, lastFetchedAt: store.meta('lastFetchedAt'), feedError: store.meta('feedError') || null, workerBusy: worker.busy, publishingEnabled: false, targetProfile: 'https://www.facebook.com/vuong.nguyen.8694', temporaryStorage: config.production && config.dataDir.startsWith('/tmp/') }, stats: { articles: articles.length, drafts: drafts.filter((d) => d.status === 'draft').length, posted: drafts.filter((d) => d.status === 'posted').length, todayGenerated: store.draftUsage(), todayPrepared: dailyPrepared(store), approved: drafts.filter(d => d.review.status === 'approved').length, todayImages: store.usage('image') } });
   });
   app.post('/api/articles/import', async (req, res, next) => {
     try {
@@ -154,7 +154,7 @@ export function createApp(store, worker) {
       const filename = `${randomUUID()}.png`;
       await fs.writeFile(path.join(store.assetsDir, filename), image);
       const latest = store.draft(draft.id);
-      res.json(store.saveDraft({ ...latest, approval: null, imageUrl: `/api/assets/${filename}`, imageKind: 'upload', imageStatus: (latest.contentRevision || 1) === (draft.contentRevision || 1) ? 'ready' : 'stale', imageError: null, imageContentRevision: draft.contentRevision || 1, updatedAt: new Date().toISOString() }));
+      res.json(store.saveDraft({ ...latest, approval: null, imageUrl: `/api/assets/${filename}`, imageKind: 'upload', imageModel: null, imageQuality: null, imageStyle: store.settings().imageStyle, imageStatus: (latest.contentRevision || 1) === (draft.contentRevision || 1) ? 'ready' : 'stale', imageError: null, imageContentRevision: draft.contentRevision || 1, updatedAt: new Date().toISOString() }));
     } catch (error) { next(error); }
   });
   app.patch('/api/drafts/:id', (req, res, next) => {
