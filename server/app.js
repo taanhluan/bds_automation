@@ -45,7 +45,7 @@ export function createApp(store, worker) {
     const localHost = ['localhost', '127.0.0.1', '[::1]'].includes(host);
     const publicHost = config.production && (host.endsWith('.onrender.com') || host === process.env.PUBLIC_HOST);
     if (!localHost && !publicHost) return res.status(403).json({ error: 'Địa chỉ truy cập không hợp lệ.' });
-    const publicPath = ['/api/health', '/api/auth/login', '/api/auth/session'].includes(req.path) || (['GET', 'HEAD'].includes(req.method) && (req.path === '/api/public/posts' || /^\/api\/public\/assets\/[a-f0-9-]+\.png$/.test(req.path)));
+    const publicPath = ['/api/health', '/api/auth/login', '/api/auth/session'].includes(req.path) || (['GET', 'HEAD'].includes(req.method) && (['/api/public/posts', '/api/public/landing'].includes(req.path) || /^\/api\/public\/assets\/[a-f0-9-]+\.png$/.test(req.path) || /^\/api\/public\/landing\/assets\/landing-[a-f0-9-]+\.webp$/.test(req.path)));
     if (req.path.startsWith('/api/') && !publicPath && !authenticated(req)) {
       const username = process.env.ACCESS_USERNAME || '';
       const password = process.env.ACCESS_PASSWORD || '';
@@ -108,6 +108,12 @@ export function createApp(store, worker) {
     res.json({ ok: true });
   });
   app.get('/api/public/posts', (_req, res) => res.json({ posts: publicNews(store) }));
+  app.get('/api/public/landing', (_req, res) => res.json({ landing: store.landingCms() }));
+  app.get('/api/public/landing/assets/:filename', (req, res) => {
+    if (!/^landing-[\da-f-]{36}\.webp$/.test(req.params.filename)) return res.status(404).end();
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.sendFile(path.join(store.assetsDir, req.params.filename), error => { if (error && !res.headersSent) res.status(404).end(); });
+  });
   app.get('/api/public/assets/:filename', (req, res) => {
     if (!publicPosts(store).some(post => post.imageUrl === `/api/public/assets/${req.params.filename}`)) return res.status(404).end();
     res.setHeader('Cache-Control', 'no-store');
@@ -122,7 +128,7 @@ export function createApp(store, worker) {
       if (article?.sourceUpdated && (draft.sourceSummary !== article.summary || draft.sourceTitle !== article.title)) return { ...reviewed, reviewFlags: [...(draft.reviewFlags || []), 'Nguồn đã được cập nhật sau khi tạo bài; cần đối chiếu lại.'] };
       return reviewed;
     });
-    res.json({ articles, drafts, jobs: store.jobs(), settings: store.settings(), status: { aiConfigured: config.aiConfigured, lowCostMode: config.lowCostMode, textModel: config.textModel, imageModel: store.settings().imageModel, imageQuality: store.settings().imageQuality, lastFetchedAt: store.meta('lastFetchedAt'), feedError: store.meta('feedError') || null, workerBusy: worker.busy, publishingEnabled: false, targetProfile: 'https://www.facebook.com/vuong.nguyen.8694', temporaryStorage: config.production && config.dataDir.startsWith('/tmp/') }, stats: { articles: articles.length, drafts: drafts.filter((d) => d.status === 'draft').length, posted: drafts.filter((d) => d.status === 'posted').length, todayGenerated: store.draftUsage(), todayPrepared: dailyPrepared(store), approved: drafts.filter(d => d.review.status === 'approved').length, todayImages: store.usage('image') } });
+    res.json({ articles, drafts, jobs: store.jobs(), settings: store.settings(), landing: store.landingCms(), status: { aiConfigured: config.aiConfigured, lowCostMode: config.lowCostMode, textModel: config.textModel, imageModel: store.settings().imageModel, imageQuality: store.settings().imageQuality, lastFetchedAt: store.meta('lastFetchedAt'), feedError: store.meta('feedError') || null, workerBusy: worker.busy, publishingEnabled: false, targetProfile: 'https://www.facebook.com/vuong.nguyen.8694', temporaryStorage: config.production && config.dataDir.startsWith('/tmp/') }, stats: { articles: articles.length, drafts: drafts.filter((d) => d.status === 'draft').length, posted: drafts.filter((d) => d.status === 'posted').length, todayGenerated: store.draftUsage(), todayPrepared: dailyPrepared(store), approved: drafts.filter(d => d.review.status === 'approved').length, todayImages: store.usage('image') } });
   });
   app.post('/api/articles/import', async (req, res, next) => {
     try {
@@ -233,6 +239,32 @@ export function createApp(store, worker) {
     res.json({ ok: true });
   });
   app.put('/api/settings', (req, res, next) => { try { res.json(store.saveSettings(req.body)); } catch (error) { next(error); } });
+  app.get('/api/landing', (_req, res) => res.json({ landing: store.landingCms() }));
+  app.put('/api/landing', (req, res, next) => { try { res.json({ landing: store.saveLandingCms(req.body) }); } catch (error) { next(error); } });
+  app.post('/api/landing/reset', (_req, res) => res.json({ landing: store.resetLandingCms() }));
+  app.post('/api/landing/upload', express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '12mb' }), async (req, res, next) => {
+    try {
+      if (!Buffer.isBuffer(req.body) || !req.body.length) throw new Error('Vui lòng chọn ảnh JPG, PNG hoặc WebP, dung lượng tối đa 12 MB.');
+      const imageSharp = sharp(req.body, { limitInputPixels: 35_000_000 });
+      const metadata = await imageSharp.metadata();
+      if (!['jpeg', 'png', 'webp'].includes(metadata.format)) throw new Error('Chỉ hỗ trợ định dạng JPG, PNG hoặc WebP.');
+
+      const resized = await imageSharp
+        .rotate()
+        .resize(1600, 1067, { fit: 'cover', position: 'center' })
+        .webp({ quality: 85, effort: 4 })
+        .toBuffer();
+
+      const filename = `landing-${randomUUID()}.webp`;
+      await fs.writeFile(path.join(store.assetsDir, filename), resized);
+      res.json({
+        imageUrl: `/api/public/landing/assets/${filename}`,
+        filename,
+        width: 1600,
+        height: 1067,
+      });
+    } catch (error) { next(error); }
+  });
   app.get('/api/assets/:filename', (req, res) => {
     if (!/^[\da-f-]{36}\.png$/.test(req.params.filename)) return res.status(404).json({ error: 'Không tìm thấy hình.' });
     res.setHeader('Cache-Control', 'private, max-age=86400');

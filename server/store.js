@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { defaults } from './config.js';
+import { defaultLandingCms, validateLandingCms } from './landing.js';
 
 export function localDay(date = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
@@ -20,12 +21,14 @@ export function createStore(dataDir) {
     CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, job_key TEXT UNIQUE NOT NULL, type TEXT NOT NULL, status TEXT NOT NULL, data TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS landing_content (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS quota_events (job_id TEXT PRIMARY KEY, kind TEXT NOT NULL, day TEXT NOT NULL, data TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS generation_cache (key TEXT PRIMARY KEY, data TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
     CREATE INDEX IF NOT EXISTS idx_quota_day ON quota_events(day, kind);
   `);
   db.prepare('INSERT OR IGNORE INTO settings(id,data) VALUES(1,?)').run(JSON.stringify(defaults));
+  db.prepare('INSERT OR IGNORE INTO landing_content(id,data) VALUES(1,?)').run(JSON.stringify(defaultLandingCms));
   const decode = (rows) => rows.map((r) => JSON.parse(r.data));
 
   const store = {
@@ -40,6 +43,19 @@ export function createStore(dataDir) {
       const next = validateSettings(value, store.settings());
       db.prepare('UPDATE settings SET data=? WHERE id=1').run(JSON.stringify(next));
       return next;
+    },
+    landingCms() {
+      const row = db.prepare('SELECT data FROM landing_content WHERE id=1').get();
+      return row ? validateLandingCms(JSON.parse(row.data), defaultLandingCms) : defaultLandingCms;
+    },
+    saveLandingCms(value) {
+      const next = validateLandingCms(value, store.landingCms());
+      db.prepare('UPDATE landing_content SET data=? WHERE id=1').run(JSON.stringify(next));
+      return next;
+    },
+    resetLandingCms() {
+      db.prepare('UPDATE landing_content SET data=? WHERE id=1').run(JSON.stringify(defaultLandingCms));
+      return defaultLandingCms;
     },
     meta(key) { return db.prepare('SELECT value FROM meta WHERE key=?').get(key)?.value ?? null; },
     setMeta(key, value) { db.prepare('INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(key, String(value)); },

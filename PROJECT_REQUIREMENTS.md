@@ -96,3 +96,73 @@ Người dùng yêu cầu push Git/main, deploy Render, đổi hostname đích v
 ### Kết quả phát hành — 30/10/2026
 
 Đã push main commit 3f34643 và deploy code đó thành công trên https://vincenterealty.onrender.com, service Free srv-dbi6r70ae00c73bd2ej0, deploy dep-dbi6ris9v7es738s9ei0. Service cũ chỉ đổi display name không đổi hostname; vì vậy chuyển sang service mới đúng slug, sao chép env qua API trong bộ nhớ và kiểm tra credentials giữ nguyên. Đã sao lưu nguồn cũ ngoài repo; service mới đã nạp 60 tin RSS. Đăng nhập/đăng xuất live đạt, private API trả 401 khi chưa đăng nhập, 10 đường dẫn env/git/source/test/data trả 404; không thấy password/API key trong HTML/JS/CSS công khai đã kiểm tra. API public 7 lượt từ máy người dùng: median 331,7 ms, max 824,7 ms; đây không phải cam kết FPS hoặc cold-start latency. Service cũ srv-db742bgn74is739l8pfg đã tạm dừng và tắt auto-deploy, không xóa. Không nâng plan có phí; Free vẫn có cold start và lưu trữ tạm.
+
+
+## Bộ Nguyên Tắc Phát Triển Cốt Lõi (Core Principles) — 30/10/2026
+
+Người dùng yêu cầu xác lập bộ nguyên tắc nền tảng định hướng cho toàn bộ hoạt động phát triển, vận hành và nâng cấp dự án FB_CT / Vincente Realty:
+
+1. **Không thay đổi cấu trúc (Architecture & Directory Structure Integrity):**
+   - Giữ nguyên cấu trúc phân tầng và thư mục chuẩn mực: `client/` (Frontend React/Vite), `server/` (Backend Express), `data/` (SQLite database & storage), `tests/` (Test suites độc lập).
+   - Duy trì API routing phân quyền rõ rệt (`/api/public/*`, `/api/admin/*`, `/api/*`).
+   - Không tự ý thêm bớt dependency nặng nề, không đảo lộn kiến trúc cơ sở dữ liệu hoặc quy ước tổ chức code khi chưa có yêu cầu cụ thể.
+
+2. **Bảo mật tuyệt đối (Security First & Zero-Leakage):**
+   - Tuyệt đối không commit credentials, `.env.local`, API key (OpenAI), mật khẩu, cookie, database SQLite, file ảnh đã tạo vào Git, frontend bundle hay Markdown logs.
+   - Bảo vệ phân quyền truy cập: Private API và Admin Studio (`/admin`) yêu cầu session HttpOnly, Secure, SameSite=Strict. Public API chỉ trả về whitelist các trường thông tin của bài đã duyệt (`approved`).
+   - Chặn toàn bộ các đường dẫn nhạy cảm như dotfiles, file source, test suites, database files từ bên ngoài.
+
+3. **Trung thực dữ kiện & Không suy diễn (Grounding & Zero Fabrication):**
+   - AI chỉ được phân tích dựa trên dữ kiện có nguồn từ RSS VnExpress thực tế hoặc context dự án được người dùng cung cấp.
+   - Tuyệt đối không bịa đặt số liệu, giá bán, thời gian di chuyển, vị trí địa lý, quy hoạch hay cam kết lợi nhuận sinh lời.
+   - Phân biệt rành mạch giữa "giá chào" vs "giá giao dịch", "đề xuất" vs "đã duyệt", "thi công" vs "hoàn thành".
+   - Ảnh AI chỉ mang tính minh họa không gian, bắt buộc có nhãn rõ ràng, không giả làm ảnh hiện trạng công trình thực tế.
+
+4. **Quyền kiểm soát thuộc con người (Human-in-the-Loop & No Auto-Publishing):**
+   - Xuất bản tự động lên Facebook cá nhân Vượng Nguyễn đang TẮT theo quyết định đã chốt.
+   - Tách biệt hoàn toàn 3 trạng thái: "Đã duyệt (Approved)" $\neq$ "Đã copy (Copied)" $\neq$ "Đã đăng (Marked Posted)".
+   - Việc duyệt hiển thị trên Landing page Vincente Realty không đồng nghĩa với việc đã đăng lên Facebook.
+   - Khi nội dung hoặc hình ảnh bị chỉnh sửa, trạng thái duyệt cũ tự động thu hồi để người dùng kiểm duyệt lại.
+
+5. **Quản trị chi phí & Kiểm soát tài nguyên (Resource & Cost Control):**
+   - Kiểm soát hạn mức gọi API OpenAI (Text & Image) chặt chẽ, tối đa 3–5 bài/ngày theo giờ Việt Nam.
+   - Không chạy vòng lặp vô tận, không tự động retry ngầm khi gặp lỗi API tốn phí.
+   - Tối ưu hóa cache: chỉ gọi API có phí khi tạo mới có chủ đích hoặc người dùng yêu cầu tái sinh bài.
+   - Tối ưu tài nguyên trên hạ tầng Render Free tier: nén tài nguyên (Brotli/Gzip, WebP), lazy-load module admin để giảm thiểu latency và tài nguyên máy chủ.
+
+6. **Đồng bộ giữa Tài liệu và Thực thi (Documentation & Implementation Parity):**
+   - Tài liệu (`PROJECT_REQUIREMENTS.md`, `CONTENT_PLAYBOOK.md`, `AGENTS.md`) và logic thực thi phải luôn song hành và phản ánh cùng một sự thật.
+   - `CONTENT_PLAYBOOK.md` được nạp trực tiếp vào prompt ở backend; cập nhật nội dung tài liệu này phải đi cùng với logic băm cache/khởi động server.
+   - Mọi yêu cầu và quyết định mới từ người dùng phải được ghi nhật ký kèm ngày tháng rõ ràng.
+
+7. **Tôn trọng dữ liệu người dùng & Bảo toàn lịch sử (Data Immutability & Preservation):**
+   - Tôn trọng mọi nội dung và hình ảnh mà người dùng đã trực tiếp chỉnh sửa hoặc tải lên.
+   - Không tự ý chạy script ghi đè hàng loạt bài viết hoặc tạo lại toàn bộ kho ảnh đã lưu khi thay đổi phong cách hay quy tắc nội dung.
+   - Phong cách mới chỉ áp dụng cho bài mới hoặc khi người dùng chủ động yêu cầu xử lý trên từng bài cụ thể.
+
+
+### CMS Quản Trị Landing Page — 30/10/2026
+
+Người dùng yêu cầu giải pháp CMS cho Landing Page và thêm một nút/tab trong Admin để quản lý CMS cho Landing page Vincente Realty:
+- Bổ sung tab **CMS Trang chủ** vào thanh điều hướng chính của Admin Content Studio (`/admin`), bên cạnh `Tin mới`, `Chờ duyệt`, `Lịch sử`, `Cài đặt`.
+- Xây dựng giao diện chỉnh sửa trực quan (`LandingCmsPanel.jsx`) cho phép cấu hình linh hoạt các phân đoạn của Landing Page:
+  * Hero & Định vị thương hiệu: Tiêu đề chính, từ điểm nhấn, mô tả 2 dòng, đoạn mở đầu, họ tên, chức danh và link Facebook.
+  * Dải biểu ngữ (Strip Banner): Nhãn dải và 3 giá trị thông điệp.
+  * Góc nhìn Vincente (The Perspective): Tiêu đề, trích dẫn nổi bật, đoạn văn chia sẻ và 3 nguyên tắc giá trị cốt lõi.
+  * Kết nối & Tư vấn (Let's Connect): Tiêu đề, lời mời trò chuyện, text nút CTA và link liên hệ đích.
+  * Chân trang (Footer): Tagline, tuyên bố miễn trừ trách nhiệm và thương hiệu bản quyền.
+- Lưu trữ bền vững trong bảng SQLite `landing_content`, bảo vệ phân quyền qua `PUT /api/landing` (yêu cầu session admin) và phục vụ công khai an toàn qua `GET /api/public/landing`.
+- Có cơ chế lọc dữ liệu (Sanitize) và kiểm tra an toàn link chống XSS, đi kèm fallback mặc định tĩnh trên Landing page giúp trang luôn hiển thị mượt mà không bị chớp hay gián đoạn; tích hợp nút **Khôi phục mặc định** chỉ với một thao tác.
+
+
+### Quản Trị CRUD Banner & Dự Án và Auto-Resize Ảnh — 30/10/2026
+
+Người dùng yêu cầu bổ sung tính năng CRUD đầy đủ cho Banner và Dự án trên Landing Page, cùng khả năng upload ảnh để replace dự án cũ hoặc thêm dự án mới, tự động scale/resize ảnh chuẩn:
+- Mở rộng CMS cho phép quản lý danh sách slide Banner/Dự án: Xem danh sách, Thêm mới (`Create`), Chỉnh sửa (`Update`), Xóa (`Delete`), và Đổi thứ tự hiển thị (`Reorder`) của từng slide.
+- Tích hợp endpoint upload ảnh an toàn `POST /api/landing/upload` (yêu cầu session admin, giới hạn 12 MB, lọc mime type JPG/PNG/WebP).
+- Backend sử dụng Sharp tự động:
+  * Xoay ảnh theo chuẩn EXIF orientation
+  * Resize và crop tỉ lệ 3:2 kích thước 1600×1067 px (`fit: 'cover', position: 'center'`) đồng nhất với kích thước của các ảnh gốc kiến trúc trong hệ thống
+  * Nén WebP chất lượng 85, nỗ lực nén cao giúp ảnh sắc nét trên màn hình Retina mà dung lượng tối ưu
+  * Lưu vào thư mục assets của server và phục vụ public an toàn qua `GET /api/public/landing/assets/:filename` với cache 1 năm.
+- Kết nối dữ liệu động ra khối Carousel bên phải Hero và Bộ sưu tập The Space Collection (`ProjectExperience.jsx`), cập nhật real-time ngay khi admin chỉnh sửa hoặc thay ảnh. Có nút khôi phục nhanh 3 slide mẫu mặc định.
