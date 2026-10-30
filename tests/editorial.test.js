@@ -62,19 +62,25 @@ test('approved content is revoked when image, revision or source changes', () =>
 });
 
 test('approval endpoint requires explicit review and rejects concurrent edits', async t => {
+  const previousUser = process.env.ACCESS_USERNAME, previousPassword = process.env.ACCESS_PASSWORD;
+  process.env.ACCESS_USERNAME = 'test-editor'; process.env.ACCESS_PASSWORD = 'test-only-password';
+  t.after(() => {
+    if (previousUser === undefined) delete process.env.ACCESS_USERNAME; else process.env.ACCESS_USERNAME = previousUser;
+    if (previousPassword === undefined) delete process.env.ACCESS_PASSWORD; else process.env.ACCESS_PASSWORD = previousPassword;
+  });
   const store = await fixture(t); store.saveDraft(draftFor());
   const worker = createWorker(store, { aiConfigured: false });
   const app = createApp(store, worker);
   const server = await new Promise(resolve => { const listener = app.listen(0, '127.0.0.1', () => resolve(listener)); });
   t.after(() => new Promise(resolve => server.close(resolve)));
   const endpoint = `http://127.0.0.1:${server.address().port}`;
-  const send = (url, body, method = 'POST') => fetch(endpoint + url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const send = (url, body, method = 'POST') => fetch(endpoint + url, { method, headers: { 'Content-Type': 'application/json', Authorization: `Basic ${Buffer.from('test-editor:test-only-password').toString('base64')}` }, body: JSON.stringify(body) });
   const valid = { sourceChecked: true, revision: 1, digest: approvalDigest(store.draft('draft')) };
   assert.equal((await send('/api/drafts/draft/approve', { ...valid, sourceChecked: false })).status, 400);
   assert.equal((await send('/api/drafts/draft/approve', { ...valid, revision: 2 })).status, 409);
   assert.equal((await send('/api/drafts/draft/approve', valid)).status, 200);
   assert.ok(store.draft('draft').approval.approvedAt);
-  assert.equal(store.draft('draft').status, 'draft'); // Approval is not publication.
+  assert.equal(store.draft('draft').status, 'draft'); // Website approval does not mark the article as posted on Facebook.
   assert.equal((await send('/api/drafts/draft', { content: `${article.summary} Cần theo dõi tiến độ.` }, 'PATCH')).status, 200);
   assert.equal(store.draft('draft').approval, null);
   assert.equal((await send('/api/drafts/draft/approve', valid)).status, 409);

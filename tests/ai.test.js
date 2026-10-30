@@ -101,14 +101,14 @@ test('network failure reports uncertainty and never silently retries', async (co
   assert.equal(calls, 1);
 });
 
-test('image request uses a single square PNG and accepts base64 only', async (context) => {
+test('image request uses a single landscape PNG and accepts base64 only', async (context) => {
   withKey(context, 'local-test-key');
   const png = await sharp({ create: { width: 32, height: 32, channels: 3, background: '#204536' } }).png().toBuffer();
   context.mock.method(globalThis, 'fetch', async (url, options) => {
     assert.equal(url, 'https://api.openai.com/v1/images/generations');
     const body = JSON.parse(options.body);
     assert.equal(body.n, 1);
-    assert.equal(body.size, '1024x1024');
+    assert.equal(body.size, '1536x1024');
     assert.equal(body.output_format, 'png');
     assert.match(body.prompt, /Do not depict or recreate/u);
     return { ok: true, json: async () => ({ data: [{ b64_json: png.toString('base64') }], usage: { total_tokens: 3 } }) };

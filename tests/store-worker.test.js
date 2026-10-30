@@ -60,7 +60,7 @@ test('persistent cache avoids a second paid request, while explicit regenerate u
   assert.equal(calls, 3);
 });
 
-test('low-cost mode creates real-article cover without image API or image quota', async (t) => {
+test('explicit template mode creates real-article cover without image API or image quota', async (t) => {
   const { store } = await setup(t);
   const article = { ...demoArticles()[0], isDemo: false };
   store.importArticles([article]);
@@ -68,7 +68,7 @@ test('low-cost mode creates real-article cover without image API or image quota'
   const draft = draftFor(article);
   store.saveDraft(draft);
   const worker = createWorker(store, { aiConfigured: false, lowCostMode: true, generateBackground: noNetwork });
-  worker.enqueueImage(draft.id);
+  worker.enqueueImage(draft.id, { templateOnly: true });
   await worker.runOnce();
   assert.equal(store.draft(draft.id).imageKind, 'template');
   assert.equal(store.draft(draft.id).imageStatus, 'ready');

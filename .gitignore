@@ -8,3 +8,18 @@ data/
 .DS_Store
 test-results/
 playwright-report/
+
+# Local security, credentials and verification artifacts
+.render/
+.codex/
+.agents/
+coverage/
+reports/
+artifacts/
+*.pem
+*.key
+*.p12
+*.sqlite*
+*.har
+*.trace
+.env.local.*

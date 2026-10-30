@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: bds-automation-test
+    name: vincenterealty
     runtime: node
     plan: free
     buildCommand: npm ci --include=dev && npm run build
@@ -16,7 +16,7 @@ services:
       - key: IMAGE_MODEL
         value: gpt-image-2.5-flare
       - key: ACCESS_USERNAME
-        value: tester
+        sync: false
       - key: ACCESS_PASSWORD
         generateValue: true
       - key: OPENAI_API_KEY

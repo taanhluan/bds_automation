@@ -13,7 +13,7 @@ const projectContext = 'Liên hệ: An Phú; Rạch Chiếc\nDự án: Nhà mẫ
 const structured = {
   status: 'ready', title: 'An Phú và câu chuyện không gian sống',
   summary: article.summary,
-  perspective: 'Với mình, nếu không gian xanh được triển khai phù hợp nhu cầu cư dân, khu vực có thể hấp dẫn hơn về chất lượng sống.',
+  perspective: 'Nếu không gian xanh được triển khai phù hợp nhu cầu cư dân, khu vực có thể hấp dẫn hơn về chất lượng sống.',
   watchpoint: 'Cần theo dõi kết quả nghiên cứu và tiến độ triển khai.',
   question: 'Bạn coi trọng yếu tố nào khi chọn nơi ở?',
   hashtags: ['#AnPhu', '#BatDongSan'], contextUsed: false,
@@ -92,10 +92,9 @@ test('OpenAI receives relevant bounded context once and returns structured perso
   assert.deepEqual(result.contextSources, []); // Model declined to use supplied context.
 });
 
-test('a first-person introduction before conditional bullets is accepted without weakening outcome checks', () => {
-  const result = validateGroundedDraft({ ...structured, perspective: `Với mình, đây là những điều đáng theo dõi:\n- ${structured.perspective}\n- Nếu tiện ích đáp ứng nhu cầu thực tế, khu vực có thể hấp dẫn hơn về tính đáng sống.` }, article);
-  assert.ok(result.perspective.includes('Với mình'));
-  assert.throws(() => validateGroundedDraft({ ...structured, perspective: `Với mình, đây là những điều đáng theo dõi:\n- ${structured.perspective}\n- Khu vực sẽ tăng giá.` }, article), { code: 'needs_context' });
+test('first-person framing is rejected according to the approved professional style', () => {
+  assert.throws(() => validateGroundedDraft({ ...structured, perspective: `Với mình, nếu không gian xanh được triển khai phù hợp, khu vực có thể hấp dẫn hơn.` }, article), { code: 'invalid_response' });
+  assert.throws(() => validateGroundedDraft({ ...structured, perspective: 'Khu vực sẽ tăng giá.' }, article), { code: 'needs_context' });
 });
 
 

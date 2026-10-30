@@ -23,15 +23,25 @@ Content Studio cho Vượng Nguyễn: tự chọn tin BĐS VnExpress, chuẩn b�
 
 Lần nâng cấp đầu tiên bật tự chuẩn bị và mục tiêu 5 bài/ngày; sau đó tôn trọng thay đổi Cài đặt của người dùng. Hạn mức lượt viết thủ công và ảnh AI vẫn độc lập với mục tiêu tự chuẩn bị.
 
+## Vincente Realty — trang công khai và admin (30/10/2026)
+
+- `/`: landing page Vincente Realty, bản tin có lọc chuyên mục, tìm kiếm và đọc toàn bài. Liên hệ dẫn tới Facebook Vượng Nguyễn.
+- `/admin`: studio hiện tại sau màn hình đăng nhập. Cấu hình `ACCESS_USERNAME` và `ACCESS_PASSWORD` trong `.env.local` (local) hoặc Environment (Render). Không cấu hình thì admin và API nội bộ bị khóa; trang công khai vẫn hoạt động. Đổi biến môi trường cần khởi động lại server.
+- Phiên đăng nhập 8 giờ, cookie HttpOnly/SameSite=Strict (Secure ở production), bị hủy khi đăng xuất hoặc server khởi động lại. Giới hạn 10 lần nhập sai/15 phút theo địa chỉ kết nối.
+- Bài thật đã duyệt đúng phiên bản, nguồn và hình còn hợp lệ tự xuất hiện trên website. Sửa nội dung/hình, bỏ duyệt hoặc lưu trữ sẽ gỡ khỏi public API. Chỉ hiển thị bản đã duyệt mới nhất mỗi nguồn; bài mẫu luôn bị loại. Duyệt website không đánh dấu đã đăng Facebook. Nội dung auto chuẩn bị vẫn cần được admin duyệt.
+- Public API `/api/public/posts` chỉ trả các trường bài viết; `/api/public/assets/:filename` chỉ phục vụ ảnh đang gắn với bài công khai. Danh sách cập nhật mỗi phút; người đang đọc có thể đã lưu nội dung trước khi bài bị gỡ.
+- Ảnh kiến trúc trang chủ là ảnh minh họa từ Unsplash (`photo-1486406146926-c627a92ad1ab`), được lưu local tại `client/public/images/architecture.jpg`; không phải ảnh dự án hay tài sản đang chào bán.
+- Chạy chung Express/SQLite hiện có, không cần một backend Sites riêng. Chưa triển khai thay đổi này lên Render.
+
 ## Chạy trên máy
 
-Yêu cầu Node.js từ 20.19 trở lên và npm. Dependencies đã được cài trong folder này; ở máy mới chạy `npm install` trước.
+Yêu cầu Node.js từ 20.19 trở lên và npm. Ở máy mới chạy `npm ci` trước.
 
 ```bash
 npm run dev
 ```
 
-Mở **http://localhost:3000**. API chạy ở `127.0.0.1:3001`. Dừng bằng `Ctrl+C`; nếu port đang bận, dừng phiên ứng dụng cũ trước khi chạy lại.
+Mở **http://localhost:3000** để xem landing page, **http://localhost:3000/admin** để quản trị. API chạy ở `127.0.0.1:3001`. Dừng bằng `Ctrl+C`; nếu port đang bận, dừng phiên ứng dụng cũ trước khi chạy lại.
 
 ## Thử ngay khi chưa có API key
 
@@ -70,22 +80,22 @@ Trong chế độ OpenAI, mỗi lượt viết tin thật mới có thể phát 
 - Bản sửa được giữ riêng với bản AI; tạo lại sinh bài nháp mới.
 - Ảnh AI có nhãn minh họa, hoặc cover đồ họa tạo miễn phí trên máy.
 - Trạng thái lỗi riêng cho ảnh; ảnh lỗi vẫn xem/copy được bài.
-- Dev chỉ lắng nghe trên loopback; bản production dùng Basic Auth, kiểm tra Host/Origin và phục vụ giao diện cùng backend.
+- Dev chỉ lắng nghe trên loopback; API quản trị yêu cầu đăng nhập, kiểm tra Host/Origin và phục vụ giao diện cùng backend.
 - `.gitignore` loại trừ key, database, hình sinh ra và dependencies.
 
 ## Deploy bản test trên Render
 
-Repo có `render.yaml` để tạo web service miễn phí cho bản test. Service chạy cả Express và giao diện, dùng Basic Auth để người có link phải nhập thông tin truy cập. Render tự tạo `ACCESS_PASSWORD`; `OPENAI_API_KEY` được nhập riêng trong bước tạo Blueprint/Dashboard, không lưu trong Git. Không dùng key đã lộ trước đây; hãy tạo key mới rồi nhập vào Render. Chọn **Bìa đồ họa · Miễn phí API ảnh** trong Cài đặt nếu cần tắt ảnh AI trả phí. Model/chất lượng ảnh và hạn mức ngày được cấu hình riêng.
+Repo có `render.yaml` để tạo web service miễn phí cho bản test. Service chạy cả Express và giao diện: landing page công khai, dữ liệu quản trị yêu cầu đăng nhập. Render tự tạo `ACCESS_PASSWORD`; `OPENAI_API_KEY` được nhập riêng trong bước tạo Blueprint/Dashboard, không lưu trong Git. Không dùng key đã lộ trước đây; hãy tạo key mới rồi nhập vào Render. Chọn **Bìa đồ họa · Miễn phí API ảnh** trong Cài đặt nếu cần tắt ảnh AI trả phí. Model/chất lượng ảnh và hạn mức ngày được cấu hình riêng.
 
-Tạo service: mở Render Dashboard → **New → Blueprint**, chọn repo `taanhluan/bds_automation`, kiểm tra cấu hình `render.yaml`, nhập `OPENAI_API_KEY` mới khi được hỏi rồi tạo service. Sau khi deploy xong, lấy URL `onrender.com` và giá trị `ACCESS_PASSWORD` trong Environment của service để gửi cho người thử; username là `tester`. Không đưa mật khẩu test vào repo. Gửi mật khẩu qua kênh riêng.
+Tạo service: mở Render Dashboard → **New → Blueprint**, chọn repo `taanhluan/bds_automation`, kiểm tra cấu hình `render.yaml`, nhập `OPENAI_API_KEY` mới khi được hỏi rồi tạo service. Sau khi deploy xong, lấy URL `onrender.com` và giá trị `ACCESS_PASSWORD` trong Environment của service để gửi cho người thử; username là giá trị `ACCESS_USERNAME`. Không đưa mật khẩu test vào repo. Gửi mật khẩu qua kênh riêng.
 
-Đây là cấu hình thử nghiệm: gói free có thể ngủ khi không hoạt động và filesystem tạm thời, nên bài nháp/ảnh có thể mất sau khi service khởi động lại hoặc deploy lại. Không dùng để lưu nội dung cần giữ. Mọi khách có username/mật khẩu đều có thể sử dụng hạn mức API chung của key; chỉ chia sẻ với người tin cậy và thu hồi/đổi key nếu cần.
+Đây là cấu hình thử nghiệm: gói free có thể ngủ khi không hoạt động và filesystem tạm thời, nên bài nháp/ảnh có thể mất sau khi service khởi động lại hoặc deploy lại. Không dùng để lưu nội dung cần giữ. Người quản trị có username/mật khẩu có thể sử dụng hạn mức API chung của key; chỉ chia sẻ với người tin cậy và thu hồi/đổi key nếu cần.
 
 ## Phạm vi
 
 Ứng dụng dùng **tiêu đề/tóm tắt RSS cùng context dự án do người dùng nhập**, không lấy toàn văn bài báo. Context là dữ liệu người dùng cung cấp, không tự được xem là thông tin đã được báo xác nhận. Tóm tắt RSS được giữ làm phần tin; một Responses API request có cấu trúc viết tiêu đề, điều kiện và lợi ích có thể có. Backend ghép phần nhận định, dữ kiện và nguồn trên máy để tiết kiệm token. Kiểm tra tự động là hỗ trợ; luôn đọc nguồn và duyệt nội dung trước khi đăng. Nguồn thiếu thông tin thì cần chọn tin khác, không dùng AI để bổ sung dữ kiện còn thiếu.
 
-Lịch chạy chỉ hoạt động khi `npm run dev` hoặc `npm start` đang chạy. Pending jobs vẫn nằm trong database khi restart. Job AI đang chạy lúc ứng dụng bị dừng được đánh dấu chưa xác định kết quả, không tự gửi lại để tránh tính phí lặp. Bản Render yêu cầu Basic Auth cho toàn bộ ứng dụng; chỉ endpoint health check được mở để nền tảng kiểm tra trạng thái.
+Lịch chạy chỉ hoạt động khi `npm run dev` hoặc `npm start` đang chạy. Pending jobs vẫn nằm trong database khi restart. Job AI đang chạy lúc ứng dụng bị dừng được đánh dấu chưa xác định kết quả, không tự gửi lại để tránh tính phí lặp. Bản Render mở landing page và các bài đã duyệt; API quản trị yêu cầu đăng nhập.
 
 VnExpress có [điều kiện sử dụng RSS](https://vnexpress.net/rss) và [điều khoản nội dung/hình](https://vnexpress.net/dieu-khoan-su-dung). Không coi link nguồn hoặc việc diễn đạt lại là quyền tái sử dụng toàn bộ bài/ảnh. Ứng dụng không tải ảnh báo để đăng lại.
 
@@ -160,3 +170,22 @@ Trong **Tiếng nói của bạn → Chế độ viết**:
 - **Miễn phí:** dùng RSS thật và khung nhận định dựng sẵn trên máy; không gọi ChatGPT, không tự liên hệ dự án. Bìa tự động cũng miễn phí kể cả khi LOW_COST_MODE=false.
 
 Hai chế độ dùng chung hạn mức 50 lượt viết/ngày; cache không phát sinh thêm lượt. Chế độ được chốt lúc xếp hàng, thay đổi cài đặt không biến tác vụ miễn phí đang chờ thành tác vụ trả phí. Dữ kiện và nhận định cần được anh duyệt trước khi copy đăng. `npm run test:live` luôn thử đúng một lượt OpenAI có phí và tạo bìa miễn phí; bài đầy đủ mới được lưu thêm ở `data/live-test/perspective-post.txt`.
+
+
+### Vincente Realty — carousel và scroll motion (30/10/2026)
+
+Hero tự chuyển ảnh mỗi 6,5 giây; có trước/sau, chọn ảnh, dừng/phát, vuốt và phím mũi tên. Tự dừng khi hover, focus, tab ẩn hoặc ra khỏi màn hình. Bộ sưu tập phía dưới cuộn ngang bằng kéo chuột, touch/trackpad và nút điều hướng. Các phần hiện dần khi scroll, ảnh parallax nhẹ, thanh tiến độ đọc; giảm chuyển động theo cài đặt hệ điều hành.
+
+Các bài thật có `contentMode=project` đã duyệt tự trở thành slide và mở toàn bài. Chưa có bài dự án thì dùng ba concept kiến trúc có nhãn minh họa, không phải danh mục bất động sản đang bán. Nguồn ảnh stock bổ sung Unsplash `photo-1600596542815-ffad4c1539a9` và `photo-1613490493576-7fde63acd811`, lưu local trong `client/public/images/`.
+
+
+### Tin tức đồng bộ từ admin (30/10/2026)
+
+Khối tin nằm giữa Liên hệ và footer, dùng `/api/public/posts` trả cả tóm tắt RSS thật trong kho admin và bài biên tập đã duyệt. Tin RSS có nhãn Tin nguồn và link đọc báo gốc, không giả thành nhận định của Vượng. Bài biên tập đã duyệt thay bản RSS cùng URL. Thu hồi duyệt gỡ bản biên tập và hình; tin nguồn công khai vẫn còn. Chỉ lấy metadata nguồn, không trả draft/context riêng. Khách xem tối đa 4 tin/trang trên một hàng ngang; có phân trang số, trước/sau, vuốt hoặc trackpad ngang. Tìm kiếm/lọc đưa về trang đầu; danh sách cập nhật mỗi phút.
+
+
+### Release hardening — 30/10/2026
+
+Secrets, env local, database, generated assets, verification results and logs are ignored by Git. Public HTTP requests to dotfiles, server source, tests, reports and project documents return 404. Admin continues to use username/password with HttpOnly/Secure/SameSite cookies in production. Credentials remain in the environment and are never included in the bundle. The checked-in `.env.example` contains placeholders only.
+
+The admin bundle loads after sign-in; stock hero images use WebP. `npm run build` generates precompressed Brotli/gzip JS/CSS. Production sends immutable caching for hashed assets and no-cache for HTML. Free Render cold starts and temporary storage remain platform limitations.
