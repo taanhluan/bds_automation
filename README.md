@@ -31,7 +31,7 @@ Lần nâng cấp đầu tiên bật tự chuẩn bị và mục tiêu 5 bài/ng
 - Bài thật đã duyệt đúng phiên bản, nguồn và hình còn hợp lệ tự xuất hiện trên website. Sửa nội dung/hình, bỏ duyệt hoặc lưu trữ sẽ gỡ khỏi public API. Chỉ hiển thị bản đã duyệt mới nhất mỗi nguồn; bài mẫu luôn bị loại. Duyệt website không đánh dấu đã đăng Facebook. Nội dung auto chuẩn bị vẫn cần được admin duyệt.
 - Public API `/api/public/posts` chỉ trả các trường bài viết; `/api/public/assets/:filename` chỉ phục vụ ảnh đang gắn với bài công khai. Danh sách cập nhật mỗi phút; người đang đọc có thể đã lưu nội dung trước khi bài bị gỡ.
 - Ảnh kiến trúc trang chủ là ảnh minh họa từ Unsplash (`photo-1486406146926-c627a92ad1ab`), được lưu local tại `client/public/images/architecture.jpg`; không phải ảnh dự án hay tài sản đang chào bán.
-- Chạy chung Express/SQLite hiện có, không cần một backend Sites riêng. Chưa triển khai thay đổi này lên Render.
+- Chạy chung Express/SQLite hiện có, không cần một backend Sites riêng. Đã triển khai lên Render ngày 30/10/2026; xem phần Live deployment ở cuối tài liệu.
 
 ## Chạy trên máy
 
@@ -189,3 +189,10 @@ Khối tin nằm giữa Liên hệ và footer, dùng `/api/public/posts` trả c
 Secrets, env local, database, generated assets, verification results and logs are ignored by Git. Public HTTP requests to dotfiles, server source, tests, reports and project documents return 404. Admin continues to use username/password with HttpOnly/Secure/SameSite cookies in production. Credentials remain in the environment and are never included in the bundle. The checked-in `.env.example` contains placeholders only.
 
 The admin bundle loads after sign-in; stock hero images use WebP. `npm run build` generates precompressed Brotli/gzip JS/CSS. Production sends immutable caching for hashed assets and no-cache for HTML. Free Render cold starts and temporary storage remain platform limitations.
+
+
+### Live deployment — 30/10/2026
+
+Public website: https://vincenterealty.onrender.com
+
+Admin sign-in: https://vincenterealty.onrender.com/admin — existing Render username/password are preserved; values are not recorded here. Live source release: `3f34643`. New Free service: `srv-dbi6r70ae00c73bd2ej0`. The legacy service is suspended with auto-deploy disabled, retained for recovery. The new service loaded 60 RSS entries and passed live authentication/logout, private-API and sensitive-path checks. Seven warm public API requests measured median 332 ms and maximum 825 ms from the operator machine; cold starts may take longer. Render Free storage remains temporary. Markdown-only changes are excluded from automatic builds.
